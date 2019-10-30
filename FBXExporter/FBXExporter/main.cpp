@@ -20,37 +20,38 @@ int main(int argc, char* argv[])
 		char buffer[50];
 		int32_t options = 0;
 
-#define MESHEXPORT '1'
-#define MATEXPORT '2'
-#define ALLEXPORT '3'
+		enum ExportOptions
+		{
+			Mesh = 0x00000001
+			, Material = 0x00000002
+			, All = Mesh | Material
+		};
 
 		std::cout << "File to import : " << argv[1] << std::endl << std::endl;
 
 		std::cout << "Import options : "
-			<< MESHEXPORT << " - Mesh; "
-			<< MATEXPORT << " - Materials; "
-			<< ALLEXPORT << " - All"
+			<< ExportOptions::Mesh << " - Mesh; "
+			<< ExportOptions::Material << " - Materials; "
+			<< ExportOptions::All << " - All"
 			<< std::endl;
 
 		std::cout << "Enter selection : ";
 		std::cin.getline(buffer, 50);
-		char exports = buffer[0];
+		int32_t exports = strtol(buffer, nullptr, 10);
 
 		std::cout << std::endl;
 
-		switch (exports)
+		if (exports & ExportOptions::Mesh)
 		{
-		case ALLEXPORT:
-		case MESHEXPORT:
 #define POSITION 0x00000001
 #define NORMAL 0x00000002
-#define SPECULAR 0x00000004
+#define COLOR 0x00000004
 #define TEXCOORD 0x00000008
 
 			std::cout << "Mesh elements supported : "
 				<< POSITION << " - Positions; "
 				<< NORMAL << " - Normals; "
-				<< SPECULAR << " - Colors; "
+				<< COLOR << " - Colors; "
 				<< TEXCOORD << " - Texture coordinates"
 				<< std::endl;
 
@@ -64,10 +65,14 @@ int main(int argc, char* argv[])
 			result = FBXExporter::Mesh::ExportMesh(argv[1], nullptr, options);
 			PrintResult(result, "Export mesh");
 
-			if (exports != ALLEXPORT)
-				break;
+#undef POSITION
+#undef NORMAL
+#undef COLOR
+#undef TEXCOORD			
+		}
 
-		case MATEXPORT:
+		if (exports & ExportOptions::Material)
+		{
 #define DIFFUSE 0x00000001
 #define EMISSIVE 0x00000002
 #define SPECULAR 0x00000004
@@ -90,12 +95,16 @@ int main(int argc, char* argv[])
 			result = FBXExporter::Material::ExportMaterials(argv[1], options);
 			PrintResult(result, "Export materials");
 
-			break;
-
-		default:
-			std::cout << "Invalid selection" << std::endl;
+#undef DIFFUSE
+#undef EMISSIVE
+#undef SPECULAR
+#undef NORMALMAP
 		}
+
+		if (!(exports & ExportOptions::Mesh) && !(exports & ExportOptions::Material))
+			std::cout << "Invalid selection" << std::endl;
 	}
+
 	else
 		std::cout << "No file to import" << std::endl;
 

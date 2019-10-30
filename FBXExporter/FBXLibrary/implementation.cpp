@@ -345,10 +345,10 @@ namespace FBXLibrary
 			uint32_t numInds = outInds.size();
 
 			// write data to file with format:
-				// uint32_t											: number of vertices
-				// { float3, float3, float4, float2 }[numVerts]		: vertex data
-				// uint32_t											: number of indices
-				// uint32_t[numInds]								: index data
+			//   uint32_t											: number of vertices
+			//   { float3, float3, float4, float2 }[numVerts]		: vertex data
+			//   uint32_t											: number of indices
+			//   uint32_t[numInds]									: index data
 			fout.write((const char*)&numVerts, sizeof(numVerts));
 			fout.write((const char*)&uniqueVerts[0], numVerts * sizeof(simple_vertex_s));
 			fout.write((const char*)&numInds, sizeof(numInds));
@@ -357,6 +357,14 @@ namespace FBXLibrary
 			result = 0;
 		}
 		// -- /write to file --
+
+
+		std::cout
+			<< "Raw vertex count : " << rawVerts.size() << std::endl
+			<< "Unique vertex count : " << uniqueVerts.size() << std::endl
+			<< "Index count : " << outInds.size() << std::endl
+			<< std::endl;
+
 
 		return result;
 	}
@@ -494,10 +502,10 @@ namespace FBXLibrary
 			uint32_t numPaths = filepaths.size();
 
 			// write data to file with format:
-				// uint32_t											: number of materials
-				// { float3, float, uint64_t }[numMats]				: material data
-				// uint32_t											: number of filepaths
-				// filepath_t[numPaths]								: filepath data
+			//   uint32_t											: number of materials
+			//   { float3, float, uint64_t }[numMats]				: material data
+			//   uint32_t											: number of filepaths
+			//   filepath_t[numPaths]								: filepath data
 			fout.write((const char*)&numMats, sizeof(numMats));
 			fout.write((const char*)&materials[0], numMats * sizeof(simple_material_s));
 			fout.write((const char*)&numPaths, sizeof(numPaths));
@@ -506,6 +514,19 @@ namespace FBXLibrary
 			result = 0;
 		}
 		// -- /write to file --
+		
+
+		std::cout
+			<< "Number of components exported : " << filepaths.size() << std::endl
+			<< "Filepaths : " << std::endl;
+		for (uint8_t i = 0; i < filepaths.size(); i++)
+		{
+			char* path = new char[260];
+			memcpy(&path[0], &filepaths[i][0], 260);
+			std::cout << path << std::endl;
+		}
+		std::cout << std::endl;
+
 
 		return result;
 	}

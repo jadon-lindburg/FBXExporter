@@ -5,6 +5,7 @@
 #include "fbxsdk.h"
 #pragma comment(lib, "libfbxsdk.lib")
 
+
 extern "C" namespace FBXLibrary
 {
 	// mesh structs
@@ -19,10 +20,10 @@ extern "C" namespace FBXLibrary
 		{
 			return
 			{
-				pos == rhs.pos
-				&& norm == rhs.norm
-				&& color == rhs.color
-				&& tex == rhs.tex
+				pos[0] == rhs.pos[0] && pos[1] == rhs.pos[1] && pos[2] == rhs.pos[2]
+				&& norm[0] == rhs.norm[0] && norm[1] == rhs.norm[1] && norm[2] == rhs.norm[2]
+				&& color[0] == rhs.color[0] && color[1] == rhs.color[1] && color[2] == rhs.color[2] && color[3] == rhs.color[3]
+				&& tex[0] == rhs.tex[0] && tex[1] == rhs.tex[1]
 			};
 		}
 	};
