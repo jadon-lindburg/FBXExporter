@@ -1,2 +1,6 @@
 .vs
 Debug
+2019*
+*.mesh
+*.mat
+*.png
