@@ -1,0 +1,1 @@
+Drag a .fbx file onto FBXExporter.exe to convert it for loading
