@@ -502,10 +502,10 @@ namespace FBXLibrary
 			uint32_t numPaths = filepaths.size();
 
 			// write data to file with format:
-			//   uint32_t											: number of materials
-			//   { float3, float, uint64_t }[numMats]				: material data
-			//   uint32_t											: number of filepaths
-			//   filepath_t[numPaths]								: filepath data
+			//   uint32_t												: number of materials
+			//   { float3, float, uint64_t }[compType::COUNT][numMats]	: material data
+			//   uint32_t												: number of filepaths
+			//   filepath_t[numPaths]									: filepath data
 			fout.write((const char*)&numMats, sizeof(numMats));
 			fout.write((const char*)&materials[0], numMats * sizeof(simple_material_s));
 			fout.write((const char*)&numPaths, sizeof(numPaths));
