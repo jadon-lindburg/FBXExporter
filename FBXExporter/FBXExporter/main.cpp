@@ -27,9 +27,9 @@ int main(int argc, char* argv[])
 			, All = Mesh | Material
 		};
 
-		std::cout << "File to import : " << argv[1] << std::endl << std::endl;
+		std::cout << "File to Export : " << argv[1] << std::endl << std::endl;
 
-		std::cout << "Import options : "
+		std::cout << "Export options : "
 			<< ExportOptions::Mesh << " - Mesh; "
 			<< ExportOptions::Material << " - Materials; "
 			<< ExportOptions::All << " - All"

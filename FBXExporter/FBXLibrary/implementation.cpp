@@ -289,7 +289,7 @@ namespace FBXLibrary
 						FbxVector2 tex = uvElement->GetDirectArray()[uvIndex];
 
 						vert.tex[0] = tex[0];
-						vert.tex[1] = tex[1];
+						vert.tex[1] = 1.0f - tex[1];
 					}
 				}
 
