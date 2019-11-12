@@ -8,7 +8,7 @@ void PrintResult(int _result, const char* _message)
 	if (_result < 0)
 		std::cout << "FAILED : " << _message << std::endl << std::endl;
 	else
-		std::cout << "SUCCESSFUL : " << _message << std::endl << std::endl;
+		std::cout << "SUCCEEDED : " << _message << std::endl << std::endl;
 }
 
 int main(int argc, char* argv[])
@@ -82,7 +82,7 @@ int main(int argc, char* argv[])
 #define NORMALMAP 0x00000008
 
 			std::cout << "Material elements supported : "
-				<< DIFFUSE << " - Diffise; "
+				<< DIFFUSE << " - Diffuse; "
 				<< EMISSIVE << " - Emissive; "
 				<< SPECULAR << " - Specular; "
 				<< NORMALMAP << " - Normal map"
@@ -106,8 +106,6 @@ int main(int argc, char* argv[])
 
 		if (exports & ExportOptions::Animation)
 		{
-			std::cout << "Pose count : " << FBXLibrary::GetScenePoseCount(filepath) << std::endl << std::endl;
-
 			result = FBXExporter::Animation::ExportAnimation(filepath);
 			PrintResult(result, "Export animation");
 		}
