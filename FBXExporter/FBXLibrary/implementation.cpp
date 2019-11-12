@@ -343,6 +343,8 @@ namespace FBXLibrary
 		{
 			uint32_t numVerts = uniqueVerts.size();
 			uint32_t numInds = outInds.size();
+			uint32_t numBytes = (numVerts * sizeof(simple_vertex_s)) + (numInds * sizeof(uint32_t)) + (2 * sizeof(uint32_t));
+			float reductionAmount = (rawVerts.size() - uniqueVerts.size()) / (rawVerts.size() * 1.0f) * 100;
 
 			// write data to file with format:
 			//   uint32_t											: number of vertices
@@ -354,22 +356,18 @@ namespace FBXLibrary
 			fout.write((const char*)&numInds, sizeof(numInds));
 			fout.write((const char*)&outInds[0], numInds * sizeof(uint32_t));
 
+			std::cout
+				<< "Raw vertex count : " << rawVerts.size() << std::endl
+				<< "Unique vertex count : " << uniqueVerts.size() << std::endl
+				<< "Reduction : " << reductionAmount << "%" << std::endl
+				<< "Index count : " << outInds.size() << std::endl
+				<< "Wrote " << numBytes << " bytes to file" << std::endl
+				<< std::endl;
+
+
 			result = 0;
 		}
 		// -- /write to file --
-
-
-		float reductionAmount = (rawVerts.size() - uniqueVerts.size()) / (rawVerts.size() * 1.0f) * 100;
-		uint32_t numBytes = (uniqueVerts.size() * sizeof(simple_vertex_s)) + (outInds.size() * sizeof(uint32_t)) + (2 * sizeof(uint32_t));
-
-
-		std::cout
-			<< "Raw vertex count : " << rawVerts.size() << std::endl
-			<< "Unique vertex count : " << uniqueVerts.size() << std::endl
-			<< "Reduction : " << reductionAmount << "%" << std::endl
-			<< "Index count : " << outInds.size() << std::endl
-			<< "Wrote " << numBytes << " bytes to file" << std::endl
-			<< std::endl;
 
 
 		return result;
@@ -506,6 +504,7 @@ namespace FBXLibrary
 		{
 			uint32_t numMats = materials.size();
 			uint32_t numPaths = filepaths.size();
+			uint32_t numBytes = (numMats * sizeof(simple_material_s)) + (numPaths * sizeof(filepath_t)) + (2 * sizeof(uint32_t));
 
 			// write data to file with format:
 			//   uint32_t												: number of materials
@@ -517,26 +516,23 @@ namespace FBXLibrary
 			fout.write((const char*)&numPaths, sizeof(numPaths));
 			fout.write((const char*)&filepaths[0], numPaths * sizeof(filepath_t));
 
+			std::cout
+				<< "Number of components exported : " << filepaths.size() << std::endl
+				<< "Filepaths : " << std::endl;
+			for (uint8_t i = 0; i < filepaths.size(); i++)
+			{
+				char* path = new char[260];
+				memcpy(&path[0], &filepaths[i][0], 260);
+				std::cout << path << std::endl;
+			}
+			std::cout
+				<< "Wrote " << numBytes << " bytes to file" << std::endl
+				<< std::endl;
+
+
 			result = 0;
 		}
 		// -- /write to file --
-		
-
-		uint32_t numBytes = (materials.size() * sizeof(simple_material_s)) + (filepaths.size() * sizeof(filepath_t)) + (2 * sizeof(uint32_t));
-		
-
-		std::cout
-			<< "Number of components exported : " << filepaths.size() << std::endl
-			<< "Filepaths : " << std::endl;
-		for (uint8_t i = 0; i < filepaths.size(); i++)
-		{
-			char* path = new char[260];
-			memcpy(&path[0], &filepaths[i][0], 260);
-			std::cout << path << std::endl;
-		}
-		std::cout
-			<< "Wrote " << numBytes<< " bytes to file" << std::endl
-			<< std::endl;
 
 
 		return result;
