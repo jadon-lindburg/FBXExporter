@@ -197,6 +197,32 @@ namespace FBXLibrary
 		return sdkManager;
 	}
 
+	matrix_s FbxAMatrixToMatrix_s(FbxAMatrix _m)
+	{
+		return
+		{
+			(float)_m.Get(0, 0),
+			(float)_m.Get(0, 1),
+			(float)_m.Get(0, 2),
+			(float)_m.Get(0, 3),
+
+			(float)_m.Get(1, 0),
+			(float)_m.Get(1, 1),
+			(float)_m.Get(1, 2),
+			(float)_m.Get(1, 3),
+
+			(float)_m.Get(2, 0),
+			(float)_m.Get(2, 1),
+			(float)_m.Get(2, 2),
+			(float)_m.Get(2, 3),
+
+			(float)_m.Get(3, 0),
+			(float)_m.Get(3, 1),
+			(float)_m.Get(3, 2),
+			(float)_m.Get(3, 3)
+		};
+	}
+
 	int ExtractMesh(const FbxScene* _scene, const char* _outputFilepath, const char* _meshName, int32_t _meshElements)
 	{
 		int result = -1;
@@ -242,7 +268,7 @@ namespace FBXLibrary
 
 		// -- extract vertices from mesh --
 
-		std::vector<simple_vertex_s> rawVerts;
+		std::vector<simple_vertex_s> verts_raw;
 
 		int polygonCount = mesh->GetPolygonCount();
 
@@ -342,7 +368,7 @@ namespace FBXLibrary
 				}
 
 				// add vert to list
-				rawVerts.push_back(vert);
+				verts_raw.push_back(vert);
 			}
 		}
 
@@ -351,22 +377,22 @@ namespace FBXLibrary
 
 		// -- index data --
 
-		std::vector<simple_vertex_s> uniqueVerts;
-		std::vector<uint32_t> outInds;
+		std::vector<simple_vertex_s> verts_out;
+		std::vector<uint32_t> inds_out;
 
 		// test all verts
-		for (int i = 0; i < rawVerts.size(); i++)
+		for (int i = 0; i < verts_raw.size(); i++)
 		{
-			simple_vertex_s vert = rawVerts[i];
+			simple_vertex_s vert = verts_raw[i];
 
 			bool unique = true;
 			uint32_t index = 0;
 
 			// compare current vert to unique verts
-			for (int v = 0; v < uniqueVerts.size(); v++)
+			for (int v = 0; v < verts_out.size(); v++)
 			{
 				// if vert matches a unique vert, store index and move on
-				if (vert == uniqueVerts[v])
+				if (vert == verts_out[v])
 				{
 					unique = false;
 					index = v;
@@ -377,11 +403,11 @@ namespace FBXLibrary
 			// if vert is unique, get new index and add to unique vert list
 			if (unique)
 			{
-				index = (uint32_t)uniqueVerts.size();
-				uniqueVerts.push_back(vert);
+				index = (uint32_t)verts_out.size();
+				verts_out.push_back(vert);
 			}
 
-			outInds.push_back(index);
+			inds_out.push_back(index);
 		}
 
 		// -- /index data --
@@ -395,10 +421,10 @@ namespace FBXLibrary
 		// verify file is open
 		if (fout.is_open())
 		{
-			uint32_t numVerts = (uint32_t)uniqueVerts.size();
-			uint32_t numInds = (uint32_t)outInds.size();
-			uint32_t numBytes = (numVerts * sizeof(simple_vertex_s)) + (numInds * sizeof(uint32_t)) + (2 * sizeof(uint32_t));
-			float reductionAmount = (rawVerts.size() - uniqueVerts.size()) / (rawVerts.size() * 1.0f) * 100;
+			uint32_t numVerts = (uint32_t)verts_out.size();
+			uint32_t numInds = (uint32_t)inds_out.size();
+			uint32_t numBytes = sizeof(numVerts) + sizeof(numInds) + (numVerts * sizeof(simple_vertex_s)) + (numInds * sizeof(uint32_t));
+			float reductionAmount = (verts_raw.size() - verts_out.size()) / (verts_raw.size() * 1.0f) * 100;
 
 			// write data to file with format:
 			//   uint32_t											: number of vertices
@@ -406,16 +432,16 @@ namespace FBXLibrary
 			//   uint32_t											: number of indices
 			//   uint32_t[numInds]									: index data
 			fout.write((const char*)&numVerts, sizeof(numVerts));
-			fout.write((const char*)&uniqueVerts[0], numVerts * sizeof(simple_vertex_s));
+			fout.write((const char*)&verts_out[0], numVerts * sizeof(simple_vertex_s));
 			fout.write((const char*)&numInds, sizeof(numInds));
-			fout.write((const char*)&outInds[0], numInds * sizeof(uint32_t));
+			fout.write((const char*)&inds_out[0], numInds * sizeof(uint32_t));
 
 
 			std::cout
-				<< "Raw vertex count : " << rawVerts.size() << std::endl
-				<< "Unique vertex count : " << uniqueVerts.size() << std::endl
+				<< "Raw vertex count : " << verts_raw.size() << std::endl
+				<< "Unique vertex count : " << verts_out.size() << std::endl
 				<< "Reduction : " << reductionAmount << "%" << std::endl
-				<< "Index count : " << outInds.size() << std::endl
+				<< "Index count : " << inds_out.size() << std::endl
 				<< "Wrote " << numBytes << " bytes to file" << std::endl
 				<< std::endl;
 
@@ -564,7 +590,7 @@ namespace FBXLibrary
 		{
 			uint32_t numMats = (uint32_t)materials.size();
 			uint32_t numPaths = (uint32_t)filepaths.size();
-			uint32_t numBytes = (numMats * sizeof(simple_material_s)) + (numPaths * sizeof(filepath_t)) + (2 * sizeof(uint32_t));
+			uint32_t numBytes = sizeof(numMats) + sizeof(numPaths) + (numMats * sizeof(simple_material_s)) + (numPaths * sizeof(filepath_t));
 
 			// write data to file with format:
 			//   uint32_t												: number of materials
@@ -634,12 +660,14 @@ namespace FBXLibrary
 		FbxNode* rootNode = nullptr;
 		FbxSkeleton* rootSkeleton = nullptr;
 
-		if (bindPose != nullptr) // verify bind pose
+		if (bindPose == nullptr)
+			return result;
+		else
 		{
 			nodeCount = bindPose->GetCount();
 			FbxNode* node = nullptr;
 			FbxSkeleton* skeleton = nullptr;
-			
+
 			for (uint32_t i = 0; i < nodeCount; i++)
 			{
 				node = bindPose->GetNode(i);
@@ -674,7 +702,7 @@ namespace FBXLibrary
 			{
 				FbxNode* childNode = nullptr;
 				FbxSkeleton* childSkeleton = nullptr;
-				
+
 				childNode = node->GetChild(c);
 
 				if (childNode != nullptr)
@@ -691,7 +719,7 @@ namespace FBXLibrary
 		// -- /create list of joints from skeleton root --
 
 
-		// -- convert FBX joint data --
+		// -- convert bind pose joint data --
 
 		std::vector<simple_joint_s> joints_out;
 
@@ -699,44 +727,50 @@ namespace FBXLibrary
 		{
 			FbxAMatrix transform = joints_fbx[i].node->EvaluateGlobalTransform();
 
-
-			simple_joint_s joint;
-
-			joint.global_transform[0] = (float)transform.Get(0, 0);
-			joint.global_transform[1] = (float)transform.Get(0, 1);
-			joint.global_transform[2] = (float)transform.Get(0, 2);
-			joint.global_transform[3] = (float)transform.Get(0, 3);
-
-			joint.global_transform[4] = (float)transform.Get(1, 0);
-			joint.global_transform[5] = (float)transform.Get(1, 1);
-			joint.global_transform[6] = (float)transform.Get(1, 2);
-			joint.global_transform[7] = (float)transform.Get(1, 3);
-			
-			joint.global_transform[8] = (float)transform.Get(2, 0);
-			joint.global_transform[9] = (float)transform.Get(2, 1);
-			joint.global_transform[10] = (float)transform.Get(2, 2);
-			joint.global_transform[11] = (float)transform.Get(2, 3);
-
-			joint.global_transform[12] = (float)transform.Get(3, 0);
-			joint.global_transform[13] = (float)transform.Get(3, 1);
-			joint.global_transform[14] = (float)transform.Get(3, 2);
-			joint.global_transform[15] = (float)transform.Get(3, 3);
-
-			joint.parent_index = joints_fbx[i].parent_index;
-
+			simple_joint_s joint = { FbxAMatrixToMatrix_s(transform), joints_fbx[i].parent_index };
 
 			joints_out.push_back(joint);
 		}
 
-		// -- /convert FBX joint data --
+		// -- /convert bind pose joint data --
 
 
 		// -- get animation data from scene --
 
-		//FbxAnimStack* animStack = scene->GetCurrentAnimationStack();
+		FbxAnimStack* animStack = scene->GetCurrentAnimationStack();
+		simple_anim_clip_s animClip;
 
-		//FbxTimeSpan animTimeSpan = animStack->GetLocalTimeSpan();
-		//double animDuration = FbxTimeSpan.GetDuration();
+		if (animStack == nullptr)
+			return result;
+		else
+		{
+			FbxTime::EMode mode = FbxTime::EMode::eFrames30;
+
+			// get animation duration and frame count
+			FbxTime animDuration = animStack->GetLocalTimeSpan().GetDuration();
+			int64_t frameCount = animDuration.GetFrameCount(mode);
+
+			// store duration in seconds
+			animClip.duration = animDuration.GetSecondDouble();
+
+			for (int64_t i = 1; i < frameCount; i++) // starts at 1 to skip bind post at frame 0
+			{
+				simple_keyframe_s keyframe;
+
+				// get keytime for current frame
+				FbxTime keytime;
+				keytime.SetFrame(i, mode);
+
+				// store keytime in seconds
+				keyframe.keytime = keytime.GetSecondDouble();
+
+				// get node transforms for current frame
+				for (uint32_t n = 0; n < joints_fbx.size(); n++)
+					keyframe.joints.push_back({ FbxAMatrixToMatrix_s(joints_fbx[n].node->EvaluateGlobalTransform(keytime)) });
+
+				animClip.keyframes.push_back(keyframe);
+			}
+		}
 
 		// -- /get animation data from scene --
 
@@ -749,7 +783,31 @@ namespace FBXLibrary
 		// verify file is open
 		if (fout.is_open())
 		{
-			
+			uint32_t numJoints = (uint32_t)joints_out.size();
+			uint32_t numFrames = (uint32_t)animClip.keyframes.size();
+			uint32_t numBytes = sizeof(numJoints) + sizeof(numFrames) + (numJoints * sizeof(simple_joint_s)) + sizeof(double) + (numFrames * sizeof(simple_keyframe_s));
+
+			// write bind pose to file with format:
+			//   uint32_t										: number of joints
+			//   { float[16], int }[numJoints]					: joint data
+			fout.write((char*)&numJoints, sizeof(numJoints));
+			fout.write((char*)&joints_out[0], numJoints * sizeof(simple_joint_s));
+
+			// write animation clip to file with format:
+			//   double											: animation duration in seconds
+			//   uint64_t										: number of frames
+			//   { double, float[16][numJoints] }[numFrames]	: frame data
+			fout.write((char*)&animClip.duration, sizeof(animClip.duration));
+			fout.write((char*)&numFrames, sizeof(numFrames));
+			fout.write((char*)&animClip.keyframes[0], numFrames * sizeof(simple_keyframe_s));
+
+
+			std::cout
+				<< "Joint count : " << numJoints << std::endl
+				<< "Frame count : " << numFrames << std::endl
+				<< "Wrote " << numBytes << " bytes to file" << std::endl
+				<< std::endl;
+
 
 			result = 0;
 		}

@@ -8,6 +8,25 @@
 
 extern "C" namespace FBXLibrary
 {
+	struct matrix_s
+	{
+		union
+		{
+			struct
+			{
+				float values[16];
+			};
+
+			float x[4];
+			float y[4];
+			float z[4];
+			float w[4];
+		};
+
+		float operator[](int i) { return values[i]; }
+		const float operator[](int i) const { return values[i]; }
+	};
+
 	// mesh structs
 	struct simple_vertex_s
 	{
@@ -59,18 +78,31 @@ extern "C" namespace FBXLibrary
 	struct fbx_joint_s
 	{
 		FbxNode*	node;
-		int			parent_index
-;
+		int			parent_index;
 	};
 
 	struct simple_joint_s
 	{
-		float	global_transform[16];
-		int		parent_index;
+		matrix_s	global_transform;
+		int			parent_index;
+	};
+
+	struct simple_keyframe_s
+	{
+		double					keytime;
+		std::vector<matrix_s>	joints;
+	};
+
+	struct simple_anim_clip_s
+	{
+		double							duration;
+		std::vector<simple_keyframe_s>	keyframes;
 	};
 
 
 	FbxManager* CreateAndImport(const char* _fbxFilepath, FbxScene*& _scene);
+
+	matrix_s FbxAMatrixToMatrix_s(FbxAMatrix _m);
 
 	int ExtractMesh(const FbxScene* _scene, const char* _outputFilepath, const char* _meshName, int32_t _meshElements);
 

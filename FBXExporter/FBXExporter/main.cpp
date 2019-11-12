@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
 			std::cout << "Pose count : " << FBXLibrary::GetScenePoseCount(filepath) << std::endl << std::endl;
 
 			result = FBXExporter::Animation::ExportAnimation(filepath);
-			PrintResult(result, "Export bind pose");
+			PrintResult(result, "Export animation");
 		}
 
 		if (!(exports & ExportOptions::Mesh) && !(exports & ExportOptions::Material) && !(exports & ExportOptions::Animation))

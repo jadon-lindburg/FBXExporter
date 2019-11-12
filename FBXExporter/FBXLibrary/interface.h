@@ -48,6 +48,7 @@ namespace FBXLibrary
 	// Returns count of poses in scene
 	FBXLIB_INTERFACE int GetScenePoseCount(const char* _fbxFilepath);
 
-	// Converts scene bind pose for use
+	// Converts scene animation for use
+	// Exports at 30 frames per second
 	FBXLIB_INTERFACE int ExportAnimation(const char* _fbxFilepath, const char* _outputFilepath);
 }
