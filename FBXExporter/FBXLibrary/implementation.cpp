@@ -359,10 +359,16 @@ namespace FBXLibrary
 		// -- /write to file --
 
 
+		float reductionAmount = (rawVerts.size() - uniqueVerts.size()) / (rawVerts.size() * 1.0f) * 100;
+		uint32_t numBytes = (uniqueVerts.size() * sizeof(simple_vertex_s)) + (outInds.size() * sizeof(uint32_t)) + (2 * sizeof(uint32_t));
+
+
 		std::cout
 			<< "Raw vertex count : " << rawVerts.size() << std::endl
 			<< "Unique vertex count : " << uniqueVerts.size() << std::endl
+			<< "Reduction : " << reductionAmount << "%" << std::endl
 			<< "Index count : " << outInds.size() << std::endl
+			<< "Wrote " << numBytes << " bytes to file" << std::endl
 			<< std::endl;
 
 
@@ -516,6 +522,9 @@ namespace FBXLibrary
 		// -- /write to file --
 		
 
+		uint32_t numBytes = (materials.size() * sizeof(simple_material_s)) + (filepaths.size() * sizeof(filepath_t)) + (2 * sizeof(uint32_t));
+		
+
 		std::cout
 			<< "Number of components exported : " << filepaths.size() << std::endl
 			<< "Filepaths : " << std::endl;
@@ -525,7 +534,9 @@ namespace FBXLibrary
 			memcpy(&path[0], &filepaths[i][0], 260);
 			std::cout << path << std::endl;
 		}
-		std::cout << std::endl;
+		std::cout
+			<< "Wrote " << numBytes<< " bytes to file" << std::endl
+			<< std::endl;
 
 
 		return result;
