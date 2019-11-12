@@ -8,8 +8,8 @@ namespace FBXExporter
 {
 	const char* ReplaceExtension(const char* _filename, const char* _extension)
 	{
-		int nameLen = strrchr(_filename, '.') - _filename;
-		int extLen = strlen(_extension);
+		int nameLen = (int)(strrchr(_filename, '.') - _filename);
+		int extLen = (int)strlen(_extension);
 		int totalLen = nameLen + extLen + 1;
 
 		char* result = new char[totalLen];
@@ -25,11 +25,11 @@ namespace FBXExporter
 	namespace Mesh
 	{
 		// interface
-		int ExportMesh(const char* _filename, const char* _meshName, uint32_t _meshElements)
+		int ExportMesh(const char* _inFile, const char* _meshName, uint32_t _meshElements)
 		{
-			const char* outFile = ReplaceExtension(_filename, ".mesh");
+			const char* outFile = ReplaceExtension(_inFile, ".mesh");
 
-			int result = FBXLibrary::ExportSimpleMesh(_filename, outFile, nullptr, _meshElements);
+			int result = FBXLibrary::ExportSimpleMesh(_inFile, outFile, nullptr, _meshElements);
 
 			return result;
 		}
@@ -39,11 +39,25 @@ namespace FBXExporter
 	namespace Material
 	{
 		// interface
-		int ExportMaterials(const char* _filename, int32_t _matElements)
+		int ExportMaterials(const char* _inFile, int32_t _matElements)
 		{
-			const char* outFile = ReplaceExtension(_filename, ".mat");
+			const char* outFile = ReplaceExtension(_inFile, ".mat");
 
-			int result = FBXLibrary::ExportSimpleMaterial(_filename, outFile, _matElements);
+			int result = FBXLibrary::ExportSimpleMaterial(_inFile, outFile, _matElements);
+
+			return result;
+		}
+
+	}
+
+	namespace Animation
+	{
+		// interface
+		int ExportBindPose(const char* _inFile)
+		{
+			const char* outFile = ReplaceExtension(_inFile, ".bindpose");
+
+			int result = FBXLibrary::ExportBindPose(_inFile, outFile);
 
 			return result;
 		}

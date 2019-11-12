@@ -5,7 +5,7 @@
 
 void PrintResult(int _result, const char* _message)
 {
-	if (_result == -1)
+	if (_result < 0)
 		std::cout << "FAILED : " << _message << std::endl << std::endl;
 	else
 		std::cout << "SUCCESSFUL : " << _message << std::endl << std::endl;
@@ -17,6 +17,8 @@ int main(int argc, char* argv[])
 
 	if (argc > 1)
 	{
+		char* filepath = argv[1];
+
 		char buffer[50];
 		int32_t options = 0;
 
@@ -24,18 +26,19 @@ int main(int argc, char* argv[])
 		{
 			Mesh = 0x00000001
 			, Material = 0x00000002
-			, All = Mesh | Material
+			, Animation = 0x00000004
+			, All = Mesh | Material | Animation
 		};
 
-		std::cout << "File to Export : " << argv[1] << std::endl << std::endl;
+		std::cout << "File to Export : " << filepath << std::endl << std::endl;
 
 		std::cout << "Export options : "
 			<< ExportOptions::Mesh << " - Mesh; "
 			<< ExportOptions::Material << " - Materials; "
-			<< ExportOptions::All << " - All"
+			<< ExportOptions::Animation << " - Animation; "
 			<< std::endl;
 
-		std::cout << "Enter selection : ";
+		std::cout << "Enter sum of selections : ";
 		std::cin.getline(buffer, 50);
 		int32_t exports = strtol(buffer, nullptr, 10);
 
@@ -62,7 +65,7 @@ int main(int argc, char* argv[])
 			std::cout << std::endl;
 
 			std::cout << "Exporting mesh..." << std::endl;
-			result = FBXExporter::Mesh::ExportMesh(argv[1], nullptr, options);
+			result = FBXExporter::Mesh::ExportMesh(filepath, nullptr, options);
 			PrintResult(result, "Export mesh");
 
 #undef POSITION
@@ -92,7 +95,7 @@ int main(int argc, char* argv[])
 			std::cout << std::endl;
 
 			std::cout << "Exporting materials..." << std::endl;
-			result = FBXExporter::Material::ExportMaterials(argv[1], options);
+			result = FBXExporter::Material::ExportMaterials(filepath, options);
 			PrintResult(result, "Export materials");
 
 #undef DIFFUSE
@@ -101,7 +104,15 @@ int main(int argc, char* argv[])
 #undef NORMALMAP
 		}
 
-		if (!(exports & ExportOptions::Mesh) && !(exports & ExportOptions::Material))
+		if (exports & ExportOptions::Animation)
+		{
+			std::cout << "Pose count : " << FBXLibrary::GetScenePoseCount(filepath) << std::endl << std::endl;
+
+			result = FBXExporter::Animation::ExportBindPose(filepath);
+			PrintResult(result, "Export bind pose");
+		}
+
+		if (!(exports & ExportOptions::Mesh) && !(exports & ExportOptions::Material) && !(exports & ExportOptions::Animation))
 			std::cout << "Invalid selection" << std::endl;
 	}
 

@@ -61,13 +61,13 @@ namespace FBXLibrary
 		// create FbxManager and import scene from file
 		FbxManager* sdkManager = CreateAndImport(_fbxFilepath, scene);
 
-		// verify manager creation
+
 		if (sdkManager == nullptr)
 			return result;
 
-		// verify scene import
 		if (scene != nullptr)
 			result = ExtractMesh(scene, _outputFilepath, _meshName, _meshElements);
+
 
 		sdkManager->Destroy();
 
@@ -107,13 +107,59 @@ namespace FBXLibrary
 		// create FbxManager and import scene from file
 		FbxManager* sdkManager = CreateAndImport(_fbxFilepath, scene);
 
+
+		if (sdkManager == nullptr)
+			return result;
+
+		if (scene != nullptr)
+			result = ExtractMaterial(scene, _outputFilepath, _matNum, _matElements);
+
+
+		sdkManager->Destroy();
+
+		return result;
+	}
+
+	int GetScenePoseCount(const char* _fbxFilepath)
+	{
+		int result = -1;
+
+		// scene pointer to be set by call to CreateAndImport()
+		FbxScene* scene = nullptr;
+
+		// create FbxManager and import scene from file
+		FbxManager* sdkManager = CreateAndImport(_fbxFilepath, scene);
+
 		// verify manager creation
 		if (sdkManager == nullptr)
 			return result;
 
 		// verify scene import
 		if (scene != nullptr)
-			result = ExtractMaterial(scene, _outputFilepath, _matNum, _matElements);
+			result = scene->GetPoseCount();
+
+		sdkManager->Destroy();
+
+		return result;
+	}
+
+	int ExportBindPose(const char* _fbxFilepath, const char* _outputFilepath)
+	{
+		int result = -1;
+
+		// scene pointer to be set by call to CreateAndImport()
+		FbxScene* scene = nullptr;
+
+		// create FbxManager and import scene from file
+		FbxManager* sdkManager = CreateAndImport(_fbxFilepath, scene);
+
+
+		if (sdkManager == nullptr)
+			return result;
+
+		if (scene != nullptr)
+			result = ExtractBindPose(scene, _outputFilepath);
+
 
 		sdkManager->Destroy();
 
@@ -193,7 +239,9 @@ namespace FBXLibrary
 		if (mesh == nullptr)
 			return result;
 
+
 		// -- extract vertices from mesh --
+
 		std::vector<simple_vertex_s> rawVerts;
 
 		int polygonCount = mesh->GetPolygonCount();
@@ -288,8 +336,8 @@ namespace FBXLibrary
 
 						FbxVector2 tex = uvElement->GetDirectArray()[uvIndex];
 
-						vert.tex[0] = tex[0];
-						vert.tex[1] = 1.0f - tex[1];
+						vert.tex[0] = (float)tex[0];
+						vert.tex[1] = (float)(1.0f - tex[1]);
 					}
 				}
 
@@ -297,9 +345,12 @@ namespace FBXLibrary
 				rawVerts.push_back(vert);
 			}
 		}
+
 		// -- /extract vertices from mesh --
 
+
 		// -- index data --
+
 		std::vector<simple_vertex_s> uniqueVerts;
 		std::vector<uint32_t> outInds;
 
@@ -326,23 +377,26 @@ namespace FBXLibrary
 			// if vert is unique, get new index and add to unique vert list
 			if (unique)
 			{
-				index = uniqueVerts.size();
+				index = (uint32_t)uniqueVerts.size();
 				uniqueVerts.push_back(vert);
 			}
 
 			outInds.push_back(index);
 		}
+
 		// -- /index data --
 
+
 		// -- write to file --
+
 		// open or create output file for writing
 		std::fstream fout = std::fstream(_outputFilepath, std::ios_base::out | std::ios_base::binary);
 
 		// verify file is open
 		if (fout.is_open())
 		{
-			uint32_t numVerts = uniqueVerts.size();
-			uint32_t numInds = outInds.size();
+			uint32_t numVerts = (uint32_t)uniqueVerts.size();
+			uint32_t numInds = (uint32_t)outInds.size();
 			uint32_t numBytes = (numVerts * sizeof(simple_vertex_s)) + (numInds * sizeof(uint32_t)) + (2 * sizeof(uint32_t));
 			float reductionAmount = (rawVerts.size() - uniqueVerts.size()) / (rawVerts.size() * 1.0f) * 100;
 
@@ -367,6 +421,7 @@ namespace FBXLibrary
 
 			result = 0;
 		}
+
 		// -- /write to file --
 
 
@@ -382,6 +437,7 @@ namespace FBXLibrary
 
 		FbxScene* scene = (FbxScene*)_scene;
 		FbxSurfaceMaterial* mat = nullptr;
+
 
 		// -- extract material from scene --
 
@@ -493,17 +549,20 @@ namespace FBXLibrary
 		}
 
 		materials.push_back(outMat);
+
 		// -- /extract material from scene --
 
+
 		// -- write to file --
+
 		// open or create output file for writing
 		std::fstream fout = std::fstream(_outputFilepath, std::ios_base::out | std::ios_base::binary);
 
 		// verify file is open
 		if (fout.is_open())
 		{
-			uint32_t numMats = materials.size();
-			uint32_t numPaths = filepaths.size();
+			uint32_t numMats = (uint32_t)materials.size();
+			uint32_t numPaths = (uint32_t)filepaths.size();
 			uint32_t numBytes = (numMats * sizeof(simple_material_s)) + (numPaths * sizeof(filepath_t)) + (2 * sizeof(uint32_t));
 
 			// write data to file with format:
@@ -532,9 +591,97 @@ namespace FBXLibrary
 
 			result = 0;
 		}
+
 		// -- /write to file --
 
 
 		return result;
 	}
+
+	int ExtractBindPose(const FbxScene* _scene, const char* _outputFilepath)
+	{
+		int result = -1;
+
+		FbxScene* scene = (FbxScene*)_scene;
+		FbxMesh* mesh = nullptr;
+
+
+		// get pose count from scene
+		uint32_t poseCount = scene->GetPoseCount();
+		FbxPose* bindPose = nullptr;
+
+
+		// -- extract bind pose from scene --
+
+		for (uint32_t i = 0; i < poseCount; i++)
+		{
+			FbxPose* pose = scene->GetPose(i);
+			if (pose->IsBindPose())
+			{
+				bindPose = pose;
+				break;
+			}
+		}
+
+		// -- /extract bind pose from scene --
+
+
+		// -- get skeleton root from bind pose --
+
+		uint32_t nodeCount = 0;
+		FbxNode* nodeRoot = nullptr;
+		FbxSkeleton* skeletonRoot = nullptr;
+
+		if (bindPose != nullptr) // verify bind pose
+		{
+			nodeCount = bindPose->GetCount();
+			FbxNode* node = nullptr;
+			FbxSkeleton* skeleton = nullptr;
+			
+			for (uint32_t i = 0; i < nodeCount; i++)
+			{
+				node = bindPose->GetNode(i);
+				if (node != nullptr)
+				{
+					skeleton = node->GetSkeleton();
+					if (skeleton != nullptr && skeleton->IsSkeletonRoot())
+					{
+						nodeRoot = node;
+						skeletonRoot = skeleton;
+						break;
+					}
+				}
+			}
+		}
+
+		// -- /get skeleton root from bind pose --
+
+
+		// -- create list of joints from skeleton root --
+
+
+
+		// -- /create list of joints from skeleton root --
+
+
+		// -- write to file --
+
+		// open or create output file for writing
+		std::fstream fout = std::fstream(_outputFilepath, std::ios_base::out | std::ios_base::binary);
+
+		// verify file is open
+		if (fout.is_open())
+		{
+
+
+
+			result = 0;
+		}
+
+		// -- /write to file --
+
+
+		return result;
+	}
+
 }

@@ -30,10 +30,10 @@ extern "C" namespace FBXLibrary
 
 	struct simple_mesh_s
 	{
-		uint32_t vertexCount = 0;
-		uint32_t indexCount = 0;
-		simple_vertex_s* vertices = nullptr;
-		uint32_t* indices = nullptr;
+		uint32_t			vertexCount = 0;
+		uint32_t			indexCount = 0;
+		simple_vertex_s*	vertices = nullptr;
+		uint32_t*			indices = nullptr;
 	};
 
 	// material structs
@@ -43,9 +43,9 @@ extern "C" namespace FBXLibrary
 
 		struct component_s
 		{
-			float value[3] = { 0.0f, 0.0f, 0.0f };
-			float factor = 0.0f;
-			int64_t input = -1;
+			float	value[3] = { 0.0f, 0.0f, 0.0f };
+			float	factor = 0.0f;
+			int64_t	input = -1;
 		};
 
 		component_s& operator[](int i) { return components[i]; }
@@ -55,9 +55,20 @@ extern "C" namespace FBXLibrary
 		component_s components[COUNT];
 	};
 
+	// animation structs
+	struct fbx_joint
+	{
+		FbxNode*	node;
+		int			parentIndex;
+	};
+
+
 	FbxManager* CreateAndImport(const char* _fbxFilepath, FbxScene*& _scene);
 
 	int ExtractMesh(const FbxScene* _scene, const char* _outputFilepath, const char* _meshName, int32_t _meshElements);
 
 	int ExtractMaterial(const FbxScene* _scene, const char* _outputFilepath, uint32_t _matNum, int32_t _matElements);
+
+	int ExtractBindPose(const FbxScene* _scene, const char* _outputFilepath);
+
 }

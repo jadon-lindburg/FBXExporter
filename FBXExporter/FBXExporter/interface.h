@@ -12,7 +12,12 @@ namespace FBXExporter
 
 	namespace Material
 	{
-		int ExportMaterials(const char* _filename, int32_t _matElements);
+		int ExportMaterials(const char* _inFile, int32_t _matElements);
+	}
+
+	namespace Animation
+	{
+		int ExportBindPose(const char* _inFile);
 	}
 
 }
