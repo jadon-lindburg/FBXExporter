@@ -49,5 +49,5 @@ namespace FBXLibrary
 	FBXLIB_INTERFACE int GetScenePoseCount(const char* _fbxFilepath);
 
 	// Converts scene bind pose for use
-	FBXLIB_INTERFACE int ExportBindPose(const char* _fbxFilepath, const char* _outputFilepath);
+	FBXLIB_INTERFACE int ExportAnimation(const char* _fbxFilepath, const char* _outputFilepath);
 }

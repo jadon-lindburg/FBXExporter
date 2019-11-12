@@ -143,7 +143,7 @@ namespace FBXLibrary
 		return result;
 	}
 
-	int ExportBindPose(const char* _fbxFilepath, const char* _outputFilepath)
+	int ExportAnimation(const char* _fbxFilepath, const char* _outputFilepath)
 	{
 		int result = -1;
 
@@ -158,7 +158,7 @@ namespace FBXLibrary
 			return result;
 
 		if (scene != nullptr)
-			result = ExtractBindPose(scene, _outputFilepath);
+			result = ExtractAnimation(scene, _outputFilepath);
 
 
 		sdkManager->Destroy();
@@ -410,6 +410,7 @@ namespace FBXLibrary
 			fout.write((const char*)&numInds, sizeof(numInds));
 			fout.write((const char*)&outInds[0], numInds * sizeof(uint32_t));
 
+
 			std::cout
 				<< "Raw vertex count : " << rawVerts.size() << std::endl
 				<< "Unique vertex count : " << uniqueVerts.size() << std::endl
@@ -442,7 +443,7 @@ namespace FBXLibrary
 		// -- extract material from scene --
 
 		// if material number is specified and scene has a material with that index
-		if (_matNum > 0 && scene->GetGeometryCount() > _matNum)
+		if (_matNum > 0 && scene->GetGeometryCount() > (int)_matNum)
 			mat = scene->GetMaterial(_matNum);
 		// if material number is unspecified or scene does not have a material with that index
 		else
@@ -575,6 +576,7 @@ namespace FBXLibrary
 			fout.write((const char*)&numPaths, sizeof(numPaths));
 			fout.write((const char*)&filepaths[0], numPaths * sizeof(filepath_t));
 
+
 			std::cout
 				<< "Number of components exported : " << filepaths.size() << std::endl
 				<< "Filepaths : " << std::endl;
@@ -598,7 +600,7 @@ namespace FBXLibrary
 		return result;
 	}
 
-	int ExtractBindPose(const FbxScene* _scene, const char* _outputFilepath)
+	int ExtractAnimation(const FbxScene* _scene, const char* _outputFilepath)
 	{
 		int result = -1;
 
@@ -629,8 +631,8 @@ namespace FBXLibrary
 		// -- get skeleton root from bind pose --
 
 		uint32_t nodeCount = 0;
-		FbxNode* nodeRoot = nullptr;
-		FbxSkeleton* skeletonRoot = nullptr;
+		FbxNode* rootNode = nullptr;
+		FbxSkeleton* rootSkeleton = nullptr;
 
 		if (bindPose != nullptr) // verify bind pose
 		{
@@ -646,8 +648,8 @@ namespace FBXLibrary
 					skeleton = node->GetSkeleton();
 					if (skeleton != nullptr && skeleton->IsSkeletonRoot())
 					{
-						nodeRoot = node;
-						skeletonRoot = skeleton;
+						rootNode = node;
+						rootSkeleton = skeleton;
 						break;
 					}
 				}
@@ -659,9 +661,84 @@ namespace FBXLibrary
 
 		// -- create list of joints from skeleton root --
 
+		std::vector<fbx_joint_s> joints_fbx;
 
+		fbx_joint_s rootJoint = { rootNode, -1 };
+		joints_fbx.push_back(rootJoint);
+
+		for (uint32_t i = 0; i < joints_fbx.size(); i++)
+		{
+			FbxNode* node = joints_fbx[i].node;
+
+			for (int32_t c = 0; c < node->GetChildCount(); c++)
+			{
+				FbxNode* childNode = nullptr;
+				FbxSkeleton* childSkeleton = nullptr;
+				
+				childNode = node->GetChild(c);
+
+				if (childNode != nullptr)
+					childSkeleton = childNode->GetSkeleton();
+
+				if (childSkeleton != nullptr)
+				{
+					fbx_joint_s childJoint = { childNode, (int)i };
+					joints_fbx.push_back(childJoint);
+				}
+			}
+		}
 
 		// -- /create list of joints from skeleton root --
+
+
+		// -- convert FBX joint data --
+
+		std::vector<simple_joint_s> joints_out;
+
+		for (uint32_t i = 0; i < joints_fbx.size(); i++)
+		{
+			FbxAMatrix transform = joints_fbx[i].node->EvaluateGlobalTransform();
+
+
+			simple_joint_s joint;
+
+			joint.global_transform[0] = (float)transform.Get(0, 0);
+			joint.global_transform[1] = (float)transform.Get(0, 1);
+			joint.global_transform[2] = (float)transform.Get(0, 2);
+			joint.global_transform[3] = (float)transform.Get(0, 3);
+
+			joint.global_transform[4] = (float)transform.Get(1, 0);
+			joint.global_transform[5] = (float)transform.Get(1, 1);
+			joint.global_transform[6] = (float)transform.Get(1, 2);
+			joint.global_transform[7] = (float)transform.Get(1, 3);
+			
+			joint.global_transform[8] = (float)transform.Get(2, 0);
+			joint.global_transform[9] = (float)transform.Get(2, 1);
+			joint.global_transform[10] = (float)transform.Get(2, 2);
+			joint.global_transform[11] = (float)transform.Get(2, 3);
+
+			joint.global_transform[12] = (float)transform.Get(3, 0);
+			joint.global_transform[13] = (float)transform.Get(3, 1);
+			joint.global_transform[14] = (float)transform.Get(3, 2);
+			joint.global_transform[15] = (float)transform.Get(3, 3);
+
+			joint.parent_index = joints_fbx[i].parent_index;
+
+
+			joints_out.push_back(joint);
+		}
+
+		// -- /convert FBX joint data --
+
+
+		// -- get animation data from scene --
+
+		//FbxAnimStack* animStack = scene->GetCurrentAnimationStack();
+
+		//FbxTimeSpan animTimeSpan = animStack->GetLocalTimeSpan();
+		//double animDuration = FbxTimeSpan.GetDuration();
+
+		// -- /get animation data from scene --
 
 
 		// -- write to file --
@@ -672,13 +749,16 @@ namespace FBXLibrary
 		// verify file is open
 		if (fout.is_open())
 		{
-
-
+			
 
 			result = 0;
 		}
 
 		// -- /write to file --
+
+
+		joints_fbx.clear();
+		joints_out.clear();
 
 
 		return result;

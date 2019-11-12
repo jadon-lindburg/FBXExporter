@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
 		{
 			std::cout << "Pose count : " << FBXLibrary::GetScenePoseCount(filepath) << std::endl << std::endl;
 
-			result = FBXExporter::Animation::ExportBindPose(filepath);
+			result = FBXExporter::Animation::ExportAnimation(filepath);
 			PrintResult(result, "Export bind pose");
 		}
 

@@ -53,11 +53,11 @@ namespace FBXExporter
 	namespace Animation
 	{
 		// interface
-		int ExportBindPose(const char* _inFile)
+		int ExportAnimation(const char* _inFile)
 		{
-			const char* outFile = ReplaceExtension(_inFile, ".bindpose");
+			const char* outFile = ReplaceExtension(_inFile, ".anim");
 
-			int result = FBXLibrary::ExportBindPose(_inFile, outFile);
+			int result = FBXLibrary::ExportAnimation(_inFile, outFile);
 
 			return result;
 		}

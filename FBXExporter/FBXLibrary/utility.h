@@ -30,8 +30,8 @@ extern "C" namespace FBXLibrary
 
 	struct simple_mesh_s
 	{
-		uint32_t			vertexCount = 0;
-		uint32_t			indexCount = 0;
+		uint32_t			vertex_count = 0;
+		uint32_t			index_count = 0;
 		simple_vertex_s*	vertices = nullptr;
 		uint32_t*			indices = nullptr;
 	};
@@ -56,10 +56,17 @@ extern "C" namespace FBXLibrary
 	};
 
 	// animation structs
-	struct fbx_joint
+	struct fbx_joint_s
 	{
 		FbxNode*	node;
-		int			parentIndex;
+		int			parent_index
+;
+	};
+
+	struct simple_joint_s
+	{
+		float	global_transform[16];
+		int		parent_index;
 	};
 
 
@@ -69,6 +76,6 @@ extern "C" namespace FBXLibrary
 
 	int ExtractMaterial(const FbxScene* _scene, const char* _outputFilepath, uint32_t _matNum, int32_t _matElements);
 
-	int ExtractBindPose(const FbxScene* _scene, const char* _outputFilepath);
+	int ExtractAnimation(const FbxScene* _scene, const char* _outputFilepath);
 
 }

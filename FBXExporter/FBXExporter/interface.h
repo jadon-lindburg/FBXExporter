@@ -17,7 +17,7 @@ namespace FBXExporter
 
 	namespace Animation
 	{
-		int ExportBindPose(const char* _inFile);
+		int ExportAnimation(const char* _inFile);
 	}
 
 }
