@@ -215,7 +215,7 @@ namespace FBXLibrary
 				int pointIndex = polygonVerts[vertIndex];
 
 				// get vertex position
-				if (_meshElements & MeshElement::MeshPos)
+				if (_meshElements & MeshElement::Position)
 				{
 					FbxVector4 pos = controlPoints[pointIndex];
 
@@ -225,7 +225,7 @@ namespace FBXLibrary
 				}
 
 				// get vertex normal
-				if (_meshElements & MeshElement::MeshNorm)
+				if (_meshElements & MeshElement::Normal)
 				{
 					FbxGeometryElementNormal* normElement = mesh->GetElementNormal();
 
@@ -248,7 +248,7 @@ namespace FBXLibrary
 				}
 
 				// get vertex color
-				if (_meshElements & MeshElement::MeshColor)
+				if (_meshElements & MeshElement::Color)
 				{
 					FbxGeometryElementVertexColor* colorElement = mesh->GetElementVertexColor();
 
@@ -272,7 +272,7 @@ namespace FBXLibrary
 				}
 
 				// get vertex UV coord
-				if (_meshElements & MeshElement::MeshTex)
+				if (_meshElements & MeshElement::TexCoord)
 				{
 					FbxGeometryElementUV* uvElement = mesh->GetElementUV();
 
@@ -400,7 +400,7 @@ namespace FBXLibrary
 
 		FbxSurfaceLambert* lambert = (FbxSurfaceLambert*)mat;
 
-		if (_matElements & MaterialElement::MatDiffuse)
+		if (_matElements & MaterialElement::Diffuse)
 		{
 			FbxDouble3 diffuseColor = lambert->Diffuse.Get();
 			FbxDouble diffuseFactor = lambert->DiffuseFactor.Get();
@@ -422,7 +422,7 @@ namespace FBXLibrary
 			}
 		}
 
-		if (_matElements & MaterialElement::MatEmissive)
+		if (_matElements & MaterialElement::Emissive)
 		{
 			FbxDouble3 emissiveColor = lambert->Emissive.Get();
 			FbxDouble emissiveFactor = lambert->EmissiveFactor.Get();
@@ -444,7 +444,7 @@ namespace FBXLibrary
 			}
 		}
 
-		if (_matElements & MaterialElement::MatSpecular)
+		if (_matElements & MaterialElement::Specular)
 		{
 			if (mat->Is<FbxSurfacePhong>())
 			{
@@ -471,7 +471,7 @@ namespace FBXLibrary
 			}
 		}
 
-		if (_matElements & MaterialElement::MatNormalMap)
+		if (_matElements & MaterialElement::NormalMap)
 		{
 			FbxDouble3 normalColor = lambert->NormalMap.Get();
 
