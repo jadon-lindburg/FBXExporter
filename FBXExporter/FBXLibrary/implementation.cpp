@@ -784,8 +784,9 @@ namespace FBXLibrary
 		if (fout.is_open())
 		{
 			uint32_t numJoints = (uint32_t)joints_out.size();
+			uint32_t frameSize = sizeof(double) + (numJoints * sizeof(matrix_s));
 			uint32_t numFrames = (uint32_t)animClip.keyframes.size();
-			uint32_t numBytes = sizeof(numJoints) + sizeof(numFrames) + (numJoints * sizeof(simple_joint_s)) + sizeof(double) + (numFrames * sizeof(simple_keyframe_s));
+			uint32_t numBytes = sizeof(numJoints) + sizeof(numFrames) + (numJoints * sizeof(simple_joint_s)) + sizeof(animClip.duration) + (numFrames * frameSize);
 
 			// write bind pose to file with format:
 			//   uint32_t										: number of joints
@@ -795,15 +796,23 @@ namespace FBXLibrary
 
 			// write animation clip to file with format:
 			//   double											: animation duration in seconds
-			//   uint64_t										: number of frames
+			//   uint32_t										: byte length of each frame
+			//   uint32_t										: number of frames
 			//   { double, float[16][numJoints] }[numFrames]	: frame data
 			fout.write((char*)&animClip.duration, sizeof(animClip.duration));
+			fout.write((char*)&frameSize, sizeof(frameSize));
 			fout.write((char*)&numFrames, sizeof(numFrames));
-			fout.write((char*)&animClip.keyframes[0], numFrames * sizeof(simple_keyframe_s));
+			for (uint32_t i = 0; i < numFrames; i++)
+			{
+				fout.write((char*)&animClip.keyframes[i].keytime, sizeof(simple_keyframe_s::keytime));
+				fout.write((char*)&animClip.keyframes[i].joints[0], frameSize - sizeof(simple_keyframe_s::keytime));
+			}
 
 
 			std::cout
 				<< "Joint count : " << numJoints << std::endl
+				<< "Duration : " << animClip.duration << std::endl
+				<< "Frame byte length : " << frameSize << std::endl
 				<< "Frame count : " << numFrames << std::endl
 				<< "Wrote " << numBytes << " bytes to file" << std::endl
 				<< std::endl;
