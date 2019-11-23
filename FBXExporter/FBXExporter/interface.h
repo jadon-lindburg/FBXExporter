@@ -7,7 +7,7 @@ namespace FBXExporter
 {
 	namespace Mesh
 	{
-		int ExportMesh(const char* _inFile, const char* _meshName = nullptr, uint32_t _meshElements = FBXLibrary::MeshElement::Position);
+		int ExportMesh(const char* _inFile, const char* _meshName = nullptr, uint32_t _meshElements = FBXLibrary::MESH_ELEMENT::POSITION);
 	}
 
 	namespace Material

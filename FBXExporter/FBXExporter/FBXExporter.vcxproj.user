@@ -9,11 +9,11 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>"C:\Users\GreenApple\OneDrive\school\1911\PP5\materials\Fbx Exporter Project - Animation I\AnimationAssets\AnimatedBox\box_walk.fbx"</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>"C:\Users\legor\Desktop\DirectXViewer\DirectXViewer\DirectXViewer\assets\Run.fbx"</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommandArguments>"C:\Users\GreenApple\OneDrive\school\1911\PP5\materials\Fbx Exporter Project - Animation I\AnimationAssets\AnimatedBox\box_walk.fbx"</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>"C:\Users\legor\Desktop\DirectXViewer\DirectXViewer\DirectXViewer\assets\Run.fbx"</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>

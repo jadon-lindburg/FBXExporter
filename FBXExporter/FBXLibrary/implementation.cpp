@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 
+#include "debug.h"
 #include "interface.h"
 #include "utility.h"
 
@@ -10,7 +11,12 @@ namespace FBXLibrary
 {
 	using filepath_t = std::array<char, 260>;
 
-	// interface
+
+#pragma region Private Helper Functions
+
+#pragma endregion
+
+#pragma region Interface Functions
 	int GetScenePolyCount(const char* _fbxFilepath)
 	{
 		int result = -1;
@@ -50,8 +56,7 @@ namespace FBXLibrary
 
 		return result;
 	}
-
-	int ExportSimpleMesh(const char* _fbxFilepath, const char* _outputFilepath, const char* _meshName, int32_t _meshElements)
+	int ExtractMesh(const char* _fbxFilepath, const char* _outputFilepath, const char* _meshName, int32_t _meshElements)
 	{
 		int result = -1;
 
@@ -66,7 +71,7 @@ namespace FBXLibrary
 			return result;
 
 		if (scene != nullptr)
-			result = ExtractMesh(scene, _outputFilepath, _meshName, _meshElements);
+			result = ExtractFbxMesh(scene, _outputFilepath, _meshName, _meshElements);
 
 
 		sdkManager->Destroy();
@@ -96,8 +101,7 @@ namespace FBXLibrary
 
 		return result;
 	}
-
-	int ExportSimpleMaterial(const char* _fbxFilepath, const char* _outputFilepath, uint32_t _matNum, int32_t _matElements)
+	int ExtractMaterial(const char* _fbxFilepath, const char* _outputFilepath, uint32_t _matNum, int32_t _matElements)
 	{
 		int result = -1;
 
@@ -112,7 +116,7 @@ namespace FBXLibrary
 			return result;
 
 		if (scene != nullptr)
-			result = ExtractMaterial(scene, _outputFilepath, _matNum, _matElements);
+			result = ExtractFbxMaterial(scene, _outputFilepath, _matNum, _matElements);
 
 
 		sdkManager->Destroy();
@@ -142,8 +146,7 @@ namespace FBXLibrary
 
 		return result;
 	}
-
-	int ExportAnimation(const char* _fbxFilepath, const char* _outputFilepath)
+	int ExtractAnimation(const char* _fbxFilepath, const char* _outputFilepath)
 	{
 		int result = -1;
 
@@ -158,15 +161,16 @@ namespace FBXLibrary
 			return result;
 
 		if (scene != nullptr)
-			result = ExtractAnimation(scene, _outputFilepath);
+			result = ExtractFbxAnimation(scene, _outputFilepath);
 
 
 		sdkManager->Destroy();
 
 		return result;
 	}
+#pragma endregion
 
-	// utility
+#pragma region Utility Functions
 	FbxManager* CreateAndImport(const char* _fbxFilepath, FbxScene*& _scene)
 	{
 		// sdk manager handles memory management
@@ -197,7 +201,7 @@ namespace FBXLibrary
 		return sdkManager;
 	}
 
-	matrix_s FbxAMatrixToMatrix_s(FbxAMatrix _m)
+	SIMPLE_MATRIX FbxAMatrixToSimpleMatrix(FbxAMatrix _m)
 	{
 		return
 		{
@@ -223,7 +227,7 @@ namespace FBXLibrary
 		};
 	}
 
-	int ExtractMesh(const FbxScene* _scene, const char* _outputFilepath, const char* _meshName, int32_t _meshElements)
+	int ExtractFbxMesh(const FbxScene* _scene, const char* _outputFilepath, const char* _meshName, int32_t _meshElements)
 	{
 		int result = -1;
 
@@ -268,7 +272,7 @@ namespace FBXLibrary
 
 		// -- extract vertices from mesh --
 
-		std::vector<simple_vertex_s> verts_raw;
+		std::vector<SIMPLE_VERTEX> verts_raw;
 
 		int polygonCount = mesh->GetPolygonCount();
 
@@ -283,13 +287,13 @@ namespace FBXLibrary
 			// for each vertex in polygon
 			for (int v = 0; v < 3; v++)
 			{
-				simple_vertex_s vert;
+				SIMPLE_VERTEX vert;
 
 				int vertIndex = i * 3 + v;
 				int pointIndex = polygonVerts[vertIndex];
 
 				// get vertex position
-				if (_meshElements & MeshElement::Position)
+				if (_meshElements & MESH_ELEMENT::POSITION)
 				{
 					FbxVector4 pos = controlPoints[pointIndex];
 
@@ -299,7 +303,7 @@ namespace FBXLibrary
 				}
 
 				// get vertex normal
-				if (_meshElements & MeshElement::Normal)
+				if (_meshElements & MESH_ELEMENT::NORMAL)
 				{
 					FbxGeometryElementNormal* normElement = mesh->GetElementNormal();
 
@@ -322,7 +326,7 @@ namespace FBXLibrary
 				}
 
 				// get vertex color
-				if (_meshElements & MeshElement::Color)
+				if (_meshElements & MESH_ELEMENT::COLOR)
 				{
 					FbxGeometryElementVertexColor* colorElement = mesh->GetElementVertexColor();
 
@@ -346,7 +350,7 @@ namespace FBXLibrary
 				}
 
 				// get vertex UV coord
-				if (_meshElements & MeshElement::TexCoord)
+				if (_meshElements & MESH_ELEMENT::TEXCOORD)
 				{
 					FbxGeometryElementUV* uvElement = mesh->GetElementUV();
 
@@ -377,13 +381,13 @@ namespace FBXLibrary
 
 		// -- index data --
 
-		std::vector<simple_vertex_s> verts_out;
+		std::vector<SIMPLE_VERTEX> verts_out;
 		std::vector<uint32_t> inds_out;
 
 		// test all verts
 		for (int i = 0; i < verts_raw.size(); i++)
 		{
-			simple_vertex_s vert = verts_raw[i];
+			SIMPLE_VERTEX vert = verts_raw[i];
 
 			bool unique = true;
 			uint32_t index = 0;
@@ -423,7 +427,7 @@ namespace FBXLibrary
 		{
 			uint32_t numVerts = (uint32_t)verts_out.size();
 			uint32_t numInds = (uint32_t)inds_out.size();
-			uint32_t numBytes = sizeof(numVerts) + sizeof(numInds) + (numVerts * sizeof(simple_vertex_s)) + (numInds * sizeof(uint32_t));
+			uint32_t numBytes = sizeof(numVerts) + sizeof(numInds) + (numVerts * sizeof(SIMPLE_VERTEX)) + (numInds * sizeof(uint32_t));
 			float reductionAmount = (verts_raw.size() - verts_out.size()) / (verts_raw.size() * 1.0f) * 100;
 
 			// write data to file with format:
@@ -432,7 +436,7 @@ namespace FBXLibrary
 			//   uint32_t											: number of indices
 			//   uint32_t[numInds]									: index data
 			fout.write((const char*)&numVerts, sizeof(numVerts));
-			fout.write((const char*)&verts_out[0], numVerts * sizeof(simple_vertex_s));
+			fout.write((const char*)&verts_out[0], numVerts * sizeof(SIMPLE_VERTEX));
 			fout.write((const char*)&numInds, sizeof(numInds));
 			fout.write((const char*)&inds_out[0], numInds * sizeof(uint32_t));
 
@@ -454,12 +458,11 @@ namespace FBXLibrary
 
 		return result;
 	}
-
-	int ExtractMaterial(const FbxScene* _scene, const char* _outputFilepath, uint32_t _matNum, int32_t _matElements)
+	int ExtractFbxMaterial(const FbxScene* _scene, const char* _outputFilepath, uint32_t _matNum, int32_t _matElements)
 	{
 		int result = -1;
 
-		std::vector<simple_material_s> materials;
+		std::vector<SIMPLE_MATERIAL> materials;
 		std::vector<filepath_t> filepaths;
 
 		FbxScene* scene = (FbxScene*)_scene;
@@ -475,7 +478,7 @@ namespace FBXLibrary
 		else
 			mat = scene->GetMaterial(0);
 
-		simple_material_s outMat;
+		SIMPLE_MATERIAL outMat;
 
 		// skip non-standard materials
 		if (mat->Is<FbxSurfaceLambert>() == false)
@@ -483,16 +486,16 @@ namespace FBXLibrary
 
 		FbxSurfaceLambert* lambert = (FbxSurfaceLambert*)mat;
 
-		if (_matElements & MaterialElement::Diffuse)
+		if (_matElements & MATERIAL_ELEMENT::DIFFUSE)
 		{
 			FbxDouble3 diffuseColor = lambert->Diffuse.Get();
 			FbxDouble diffuseFactor = lambert->DiffuseFactor.Get();
 
-			outMat[simple_material_s::eComponent::DIFFUSE].value[0] = (float)diffuseColor[0];
-			outMat[simple_material_s::eComponent::DIFFUSE].value[1] = (float)diffuseColor[1];
-			outMat[simple_material_s::eComponent::DIFFUSE].value[2] = (float)diffuseColor[2];
+			outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].value[0] = (float)diffuseColor[0];
+			outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].value[1] = (float)diffuseColor[1];
+			outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].value[2] = (float)diffuseColor[2];
 
-			outMat[simple_material_s::eComponent::DIFFUSE].factor = (float)diffuseFactor;
+			outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].factor = (float)diffuseFactor;
 
 			FbxFileTexture* fileTexture = lambert->Diffuse.GetSrcObject<FbxFileTexture>();
 			if (fileTexture != nullptr)
@@ -500,21 +503,21 @@ namespace FBXLibrary
 				const char* filename = fileTexture->GetRelativeFileName();
 				filepath_t filepath;
 				strcpy_s(filepath.data(), filepath.max_size(), filename);
-				outMat[simple_material_s::eComponent::DIFFUSE].input = filepaths.size();
+				outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].input = filepaths.size();
 				filepaths.push_back(filepath);
 			}
 		}
 
-		if (_matElements & MaterialElement::Emissive)
+		if (_matElements & MATERIAL_ELEMENT::EMISSIVE)
 		{
 			FbxDouble3 emissiveColor = lambert->Emissive.Get();
 			FbxDouble emissiveFactor = lambert->EmissiveFactor.Get();
 
-			outMat[simple_material_s::eComponent::EMISSIVE].value[0] = (float)emissiveColor[0];
-			outMat[simple_material_s::eComponent::EMISSIVE].value[1] = (float)emissiveColor[1];
-			outMat[simple_material_s::eComponent::EMISSIVE].value[2] = (float)emissiveColor[2];
+			outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].value[0] = (float)emissiveColor[0];
+			outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].value[1] = (float)emissiveColor[1];
+			outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].value[2] = (float)emissiveColor[2];
 
-			outMat[simple_material_s::eComponent::EMISSIVE].factor = (float)emissiveFactor;
+			outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].factor = (float)emissiveFactor;
 
 			FbxFileTexture* fileTexture = lambert->Emissive.GetSrcObject<FbxFileTexture>();
 			if (fileTexture != nullptr)
@@ -522,12 +525,12 @@ namespace FBXLibrary
 				const char* filename = fileTexture->GetRelativeFileName();
 				filepath_t filepath;
 				strcpy_s(filepath.data(), filepath.max_size(), filename);
-				outMat[simple_material_s::eComponent::EMISSIVE].input = filepaths.size();
+				outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].input = filepaths.size();
 				filepaths.push_back(filepath);
 			}
 		}
 
-		if (_matElements & MaterialElement::Specular)
+		if (_matElements & MATERIAL_ELEMENT::SPECULAR)
 		{
 			if (mat->Is<FbxSurfacePhong>())
 			{
@@ -536,11 +539,11 @@ namespace FBXLibrary
 				FbxDouble3 specularColor = phong->Specular.Get();
 				FbxDouble specularFactor = phong->SpecularFactor.Get();
 
-				outMat[simple_material_s::eComponent::SPECULAR].value[0] = (float)specularColor[0];
-				outMat[simple_material_s::eComponent::SPECULAR].value[1] = (float)specularColor[1];
-				outMat[simple_material_s::eComponent::SPECULAR].value[2] = (float)specularColor[2];
+				outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].value[0] = (float)specularColor[0];
+				outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].value[1] = (float)specularColor[1];
+				outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].value[2] = (float)specularColor[2];
 
-				outMat[simple_material_s::eComponent::SPECULAR].factor = (float)specularFactor;
+				outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].factor = (float)specularFactor;
 
 				FbxFileTexture* fileTexture = phong->Specular.GetSrcObject<FbxFileTexture>();
 				if (fileTexture != nullptr)
@@ -548,21 +551,21 @@ namespace FBXLibrary
 					const char* filename = fileTexture->GetRelativeFileName();
 					filepath_t filepath;
 					strcpy_s(filepath.data(), filepath.max_size(), filename);
-					outMat[simple_material_s::eComponent::SPECULAR].input = filepaths.size();
+					outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].input = filepaths.size();
 					filepaths.push_back(filepath);
 				}
 			}
 		}
 
-		if (_matElements & MaterialElement::NormalMap)
+		if (_matElements & MATERIAL_ELEMENT::NORMALMAP)
 		{
 			FbxDouble3 normalColor = lambert->NormalMap.Get();
 
-			outMat[simple_material_s::eComponent::NORMALMAP].value[0] = (float)normalColor[0];
-			outMat[simple_material_s::eComponent::NORMALMAP].value[1] = (float)normalColor[1];
-			outMat[simple_material_s::eComponent::NORMALMAP].value[2] = (float)normalColor[2];
+			outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].value[0] = (float)normalColor[0];
+			outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].value[1] = (float)normalColor[1];
+			outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].value[2] = (float)normalColor[2];
 
-			outMat[simple_material_s::eComponent::NORMALMAP].factor = 1.0f;
+			outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].factor = 1.0f;
 
 			FbxFileTexture* fileTexture = lambert->NormalMap.GetSrcObject<FbxFileTexture>();
 			if (fileTexture != nullptr)
@@ -570,7 +573,7 @@ namespace FBXLibrary
 				const char* filename = fileTexture->GetRelativeFileName();
 				filepath_t filepath;
 				strcpy_s(filepath.data(), filepath.max_size(), filename);
-				outMat[simple_material_s::eComponent::NORMALMAP].input = filepaths.size();
+				outMat[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].input = filepaths.size();
 				filepaths.push_back(filepath);
 			}
 		}
@@ -590,7 +593,7 @@ namespace FBXLibrary
 		{
 			uint32_t numMats = (uint32_t)materials.size();
 			uint32_t numPaths = (uint32_t)filepaths.size();
-			uint32_t numBytes = sizeof(numMats) + sizeof(numPaths) + (numMats * sizeof(simple_material_s)) + (numPaths * sizeof(filepath_t));
+			uint32_t numBytes = sizeof(numMats) + sizeof(numPaths) + (numMats * sizeof(SIMPLE_MATERIAL)) + (numPaths * sizeof(filepath_t));
 
 			// write data to file with format:
 			//   uint32_t												: number of materials
@@ -598,7 +601,7 @@ namespace FBXLibrary
 			//   uint32_t												: number of filepaths
 			//   filepath_t[numPaths]									: filepath data
 			fout.write((const char*)&numMats, sizeof(numMats));
-			fout.write((const char*)&materials[0], numMats * sizeof(simple_material_s));
+			fout.write((const char*)&materials[0], numMats * sizeof(SIMPLE_MATERIAL));
 			fout.write((const char*)&numPaths, sizeof(numPaths));
 			fout.write((const char*)&filepaths[0], numPaths * sizeof(filepath_t));
 
@@ -608,7 +611,7 @@ namespace FBXLibrary
 				<< "Filepaths : " << std::endl;
 			for (uint8_t i = 0; i < filepaths.size(); i++)
 			{
-				char* path = new char[260];
+				char* path = NEW char[260];
 				memcpy(&path[0], &filepaths[i][0], 260);
 				std::cout << path << std::endl;
 			}
@@ -625,8 +628,7 @@ namespace FBXLibrary
 
 		return result;
 	}
-
-	int ExtractAnimation(const FbxScene* _scene, const char* _outputFilepath)
+	int ExtractFbxAnimation(const FbxScene* _scene, const char* _outputFilepath)
 	{
 		int result = -1;
 
@@ -689,9 +691,9 @@ namespace FBXLibrary
 
 		// -- create list of joints from skeleton root --
 
-		std::vector<fbx_joint_s> joints_fbx;
+		std::vector<FBX_JOINT> joints_fbx;
 
-		fbx_joint_s rootJoint = { rootNode, -1 };
+		FBX_JOINT rootJoint = { rootNode, -1 };
 		joints_fbx.push_back(rootJoint);
 
 		for (uint32_t i = 0; i < joints_fbx.size(); i++)
@@ -710,7 +712,7 @@ namespace FBXLibrary
 
 				if (childSkeleton != nullptr)
 				{
-					fbx_joint_s childJoint = { childNode, (int)i };
+					FBX_JOINT childJoint = { childNode, (int)i };
 					joints_fbx.push_back(childJoint);
 				}
 			}
@@ -721,13 +723,13 @@ namespace FBXLibrary
 
 		// -- convert bind pose joint data --
 
-		std::vector<simple_joint_s> joints_out;
+		std::vector<SIMPLE_JOINT> joints_out;
 
 		for (uint32_t i = 0; i < joints_fbx.size(); i++)
 		{
 			FbxAMatrix transform = joints_fbx[i].node->EvaluateGlobalTransform();
 
-			simple_joint_s joint = { FbxAMatrixToMatrix_s(transform), joints_fbx[i].parent_index };
+			SIMPLE_JOINT joint = { FbxAMatrixToSimpleMatrix(transform), joints_fbx[i].parent_index };
 
 			joints_out.push_back(joint);
 		}
@@ -738,7 +740,7 @@ namespace FBXLibrary
 		// -- get animation data from scene --
 
 		FbxAnimStack* animStack = scene->GetCurrentAnimationStack();
-		simple_anim_clip_s animClip;
+		SIMPLE_ANIM_CLIP animClip;
 
 		if (animStack == nullptr)
 			return result;
@@ -755,20 +757,20 @@ namespace FBXLibrary
 
 			for (int64_t i = 1; i < frameCount; i++) // starts at 1 to skip bind post at frame 0
 			{
-				simple_keyframe_s keyframe;
+				SIMPLE_ANIM_FRAME keyframe;
 
 				// get keytime for current frame
 				FbxTime keytime;
 				keytime.SetFrame(i, mode);
 
 				// store keytime in seconds
-				keyframe.keytime = keytime.GetSecondDouble();
+				keyframe.time = keytime.GetSecondDouble();
 
 				// get node transforms for current frame
 				for (uint32_t n = 0; n < joints_fbx.size(); n++)
-					keyframe.joints.push_back({ FbxAMatrixToMatrix_s(joints_fbx[n].node->EvaluateGlobalTransform(keytime)) });
+					keyframe.transforms.push_back({ FbxAMatrixToSimpleMatrix(joints_fbx[n].node->EvaluateGlobalTransform(keytime)) });
 
-				animClip.keyframes.push_back(keyframe);
+				animClip.frames.push_back(keyframe);
 			}
 		}
 
@@ -784,15 +786,15 @@ namespace FBXLibrary
 		if (fout.is_open())
 		{
 			uint32_t numJoints = (uint32_t)joints_out.size();
-			uint32_t frameSize = sizeof(double) + (numJoints * sizeof(matrix_s));
-			uint32_t numFrames = (uint32_t)animClip.keyframes.size();
-			uint32_t numBytes = sizeof(numJoints) + sizeof(numFrames) + (numJoints * sizeof(simple_joint_s)) + sizeof(animClip.duration) + (numFrames * frameSize);
+			uint32_t frameSize = sizeof(double) + (numJoints * sizeof(SIMPLE_MATRIX));
+			uint32_t numFrames = (uint32_t)animClip.frames.size();
+			uint32_t numBytes = sizeof(numJoints) + sizeof(numFrames) + (numJoints * sizeof(SIMPLE_JOINT)) + sizeof(animClip.duration) + (numFrames * frameSize);
 
 			// write bind pose to file with format:
 			//   uint32_t										: number of joints
 			//   { float[16], int }[numJoints]					: joint data
 			fout.write((char*)&numJoints, sizeof(numJoints));
-			fout.write((char*)&joints_out[0], numJoints * sizeof(simple_joint_s));
+			fout.write((char*)&joints_out[0], numJoints * sizeof(SIMPLE_JOINT));
 
 			// write animation clip to file with format:
 			//   double											: animation duration in seconds
@@ -804,8 +806,8 @@ namespace FBXLibrary
 			fout.write((char*)&numFrames, sizeof(numFrames));
 			for (uint32_t i = 0; i < numFrames; i++)
 			{
-				fout.write((char*)&animClip.keyframes[i].keytime, sizeof(simple_keyframe_s::keytime));
-				fout.write((char*)&animClip.keyframes[i].joints[0], frameSize - sizeof(simple_keyframe_s::keytime));
+				fout.write((char*)&animClip.frames[i].time, sizeof(SIMPLE_ANIM_FRAME::time));
+				fout.write((char*)&animClip.frames[i].transforms[0], frameSize - sizeof(SIMPLE_ANIM_FRAME::time));
 			}
 
 
@@ -830,5 +832,6 @@ namespace FBXLibrary
 
 		return result;
 	}
+#pragma endregion
 
 }

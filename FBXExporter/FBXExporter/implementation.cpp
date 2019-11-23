@@ -29,7 +29,7 @@ namespace FBXExporter
 		{
 			const char* outFile = ReplaceExtension(_inFile, ".mesh");
 
-			int result = FBXLibrary::ExportSimpleMesh(_inFile, outFile, nullptr, _meshElements);
+			int result = FBXLibrary::ExtractMesh(_inFile, outFile, nullptr, _meshElements);
 
 			return result;
 		}
@@ -43,7 +43,7 @@ namespace FBXExporter
 		{
 			const char* outFile = ReplaceExtension(_inFile, ".mat");
 
-			int result = FBXLibrary::ExportSimpleMaterial(_inFile, outFile, _matElements);
+			int result = FBXLibrary::ExtractMaterial(_inFile, outFile, _matElements);
 
 			return result;
 		}
@@ -57,7 +57,7 @@ namespace FBXExporter
 		{
 			const char* outFile = ReplaceExtension(_inFile, ".anim");
 
-			int result = FBXLibrary::ExportAnimation(_inFile, outFile);
+			int result = FBXLibrary::ExtractAnimation(_inFile, outFile);
 
 			return result;
 		}

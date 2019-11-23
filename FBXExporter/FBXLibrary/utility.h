@@ -8,34 +8,33 @@
 
 extern "C" namespace FBXLibrary
 {
-	struct matrix_s
+	struct SIMPLE_MATRIX
 	{
 		union
 		{
 			struct
 			{
-				float values[16];
+				float x[4];
+				float y[4];
+				float z[4];
+				float w[4];
 			};
 
-			float x[4];
-			float y[4];
-			float z[4];
-			float w[4];
+			float values[16];
 		};
 
 		float operator[](int i) { return values[i]; }
 		const float operator[](int i) const { return values[i]; }
 	};
 
-	// mesh structs
-	struct simple_vertex_s
+	struct SIMPLE_VERTEX
 	{
 		float pos[3] = { 0.0f, 0.0f, 0.0f };
 		float norm[3] = { 0.0f, 0.0f, 0.0f };
 		float color[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 		float tex[2] = { 0.0f, 0.0f };
 
-		bool operator==(const simple_vertex_s rhs)
+		bool operator==(const SIMPLE_VERTEX rhs)
 		{
 			return
 			{
@@ -47,67 +46,65 @@ extern "C" namespace FBXLibrary
 		}
 	};
 
-	struct simple_mesh_s
+	struct SIMPLE_MESH
 	{
 		uint32_t			vertex_count = 0;
 		uint32_t			index_count = 0;
-		simple_vertex_s*	vertices = nullptr;
+		SIMPLE_VERTEX*		vertices = nullptr;
 		uint32_t*			indices = nullptr;
 	};
 
-	// material structs
-	struct simple_material_s
+	struct SIMPLE_MATERIAL
 	{
-		enum eComponent { DIFFUSE = 0, EMISSIVE, SPECULAR, NORMALMAP, COUNT };
+		enum COMPONENT_TYPE { DIFFUSE = 0, EMISSIVE, SPECULAR, NORMALMAP, COUNT };
 
-		struct component_s
+		struct COMPONENT
 		{
 			float	value[3] = { 0.0f, 0.0f, 0.0f };
 			float	factor = 0.0f;
 			int64_t	input = -1;
 		};
 
-		component_s& operator[](int i) { return components[i]; }
-		const component_s& operator[](int i) const { return components[i]; }
+		COMPONENT& operator[](int i) { return components[i]; }
+		const COMPONENT& operator[](int i) const { return components[i]; }
 
 	private:
-		component_s components[COUNT];
+		COMPONENT components[COUNT];
 	};
 
-	// animation structs
-	struct fbx_joint_s
+	struct FBX_JOINT
 	{
 		FbxNode*	node;
 		int			parent_index;
 	};
 
-	struct simple_joint_s
+	struct SIMPLE_JOINT
 	{
-		matrix_s	global_transform;
-		int			parent_index;
+		SIMPLE_MATRIX	global_transform;
+		int				parent_index;
 	};
 
-	struct simple_keyframe_s
+	struct SIMPLE_ANIM_FRAME
 	{
-		double					keytime;
-		std::vector<matrix_s>	joints;
+		double					time;
+		std::vector<SIMPLE_MATRIX>	transforms;
 	};
 
-	struct simple_anim_clip_s
+	struct SIMPLE_ANIM_CLIP
 	{
 		double							duration;
-		std::vector<simple_keyframe_s>	keyframes;
+		std::vector<SIMPLE_ANIM_FRAME>		frames;
 	};
 
 
 	FbxManager* CreateAndImport(const char* _fbxFilepath, FbxScene*& _scene);
 
-	matrix_s FbxAMatrixToMatrix_s(FbxAMatrix _m);
+	SIMPLE_MATRIX FbxAMatrixToSimpleMatrix(FbxAMatrix _m);
 
-	int ExtractMesh(const FbxScene* _scene, const char* _outputFilepath, const char* _meshName, int32_t _meshElements);
+	int ExtractFbxMesh(const FbxScene* _scene, const char* _outputFilepath, const char* _meshName, int32_t _meshElements);
 
-	int ExtractMaterial(const FbxScene* _scene, const char* _outputFilepath, uint32_t _matNum, int32_t _matElements);
+	int ExtractFbxMaterial(const FbxScene* _scene, const char* _outputFilepath, uint32_t _matNum, int32_t _matElements);
 
-	int ExtractAnimation(const FbxScene* _scene, const char* _outputFilepath);
+	int ExtractFbxAnimation(const FbxScene* _scene, const char* _outputFilepath);
 
 }
