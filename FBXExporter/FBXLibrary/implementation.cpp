@@ -7,198 +7,96 @@
 #include "interface.h"
 #include "utility.h"
 
+
 namespace FBXLibrary
 {
+#pragma region Defines
+	// macros used to specify the result of functions and operations
+#define FAIL -1
+#define SUCCESS 0
+#define EXTRACT 1
+#define EXPORT 2
+
+	// macros used to test the result of functions and operations
+#define FAILED(r) (r < 0)
+#define SUCCEEDED(r) (r >= 0)
+
+	// char array used to store filepaths instead of char* because the inconsistent length of char* would make writing and reading files more complicated
 	using filepath_t = std::array<char, 260>;
+#pragma endregion
 
 
 #pragma region Private Helper Functions
-
-#pragma endregion
-
-#pragma region Interface Functions
-	int GetScenePolyCount(const char* _fbxFilepath)
+	// Searches a scene for a mesh name, or returns the first mesh if no name is specified
+	void GetFbxMeshFromScene(FbxMesh*& _mesh_p, FbxScene* _scene_p, const char* _meshName = nullptr)
 	{
-		int result = -1;
+		FbxGeometry* geo_p = nullptr;
 
-		// scene pointer to be set by call to CreateAndImport()
-		FbxScene* scene = nullptr;
-
-		// create FbxManager and import scene from file
-		FbxManager* sdkManager = CreateAndImport(_fbxFilepath, scene);
-
-		// verify manager creation
-		if (sdkManager == nullptr)
-			return result;
-
-		// verify scene import
-		if (scene != nullptr)
-		{
-			result = 0;
-
-			int geoCount = scene->GetGeometryCount();
-
-			for (int i = 0; i < geoCount; i++)
+		// search scene for mesh name
+		if (_meshName != nullptr)
+			// search scene for mesh name
+			for (int i = 0; i < _scene_p->GetGeometryCount(); i++)
 			{
-				FbxGeometry* geo = scene->GetGeometry(i);
+				geo_p = _scene_p->GetGeometry(i);
 
-				// skip non-mesh geometries
-				if (geo->GetAttributeType() != FbxNodeAttribute::eMesh)
-					continue;
-
-				// add mesh's polygon count to result
-				FbxMesh* mesh = (FbxMesh*)geo;
-				result += mesh->GetPolygonCount();
+				// if geometry is a mesh and name matches, store mesh
+				if (geo_p->GetAttributeType() == FbxNodeAttribute::eMesh && geo_p->GetName() == _meshName)
+				{
+					_mesh_p = (FbxMesh*)geo_p;
+					break;
+				}
 			}
-		}
+		// if no mesh name is specified, use first mesh
+		else
+			// find first mesh in scene
+			for (int i = 0; i < _scene_p->GetGeometryCount(); i++)
+			{
+				geo_p = _scene_p->GetGeometry(i);
 
-		sdkManager->Destroy();
-
-		return result;
-	}
-	int ExtractMesh(const char* _fbxFilepath, const char* _outputFilepath, const char* _meshName, int32_t _meshElements)
-	{
-		int result = -1;
-
-		// scene pointer to be set by call to CreateAndImport()
-		FbxScene* scene = nullptr;
-
-		// create FbxManager and import scene from file
-		FbxManager* sdkManager = CreateAndImport(_fbxFilepath, scene);
-
-
-		if (sdkManager == nullptr)
-			return result;
-
-		if (scene != nullptr)
-			result = ExtractFbxMesh(scene, _outputFilepath, _meshName, _meshElements);
-
-
-		sdkManager->Destroy();
-
-		return result;
-	}
-
-	int GetSceneMaterialCount(const char* _fbxFilepath)
-	{
-		int result = -1;
-
-		// scene pointer to be set by call to CreateAndImport()
-		FbxScene* scene = nullptr;
-
-		// create FbxManager and import scene from file
-		FbxManager* sdkManager = CreateAndImport(_fbxFilepath, scene);
-
-		// verify manager creation
-		if (sdkManager == nullptr)
-			return result;
-
-		// verify scene import
-		if (scene != nullptr)
-			result = scene->GetMaterialCount();
-
-		sdkManager->Destroy();
-
-		return result;
-	}
-	int ExtractMaterial(const char* _fbxFilepath, const char* _outputFilepath, uint32_t _matNum, int32_t _matElements)
-	{
-		int result = -1;
-
-		// scene pointer to be set by call to CreateAndImport()
-		FbxScene* scene = nullptr;
-
-		// create FbxManager and import scene from file
-		FbxManager* sdkManager = CreateAndImport(_fbxFilepath, scene);
-
-
-		if (sdkManager == nullptr)
-			return result;
-
-		if (scene != nullptr)
-			result = ExtractFbxMaterial(scene, _outputFilepath, _matNum, _matElements);
-
-
-		sdkManager->Destroy();
-
-		return result;
-	}
-
-	int GetScenePoseCount(const char* _fbxFilepath)
-	{
-		int result = -1;
-
-		// scene pointer to be set by call to CreateAndImport()
-		FbxScene* scene = nullptr;
-
-		// create FbxManager and import scene from file
-		FbxManager* sdkManager = CreateAndImport(_fbxFilepath, scene);
-
-		// verify manager creation
-		if (sdkManager == nullptr)
-			return result;
-
-		// verify scene import
-		if (scene != nullptr)
-			result = scene->GetPoseCount();
-
-		sdkManager->Destroy();
-
-		return result;
-	}
-	int ExtractAnimation(const char* _fbxFilepath, const char* _outputFilepath)
-	{
-		int result = -1;
-
-		// scene pointer to be set by call to CreateAndImport()
-		FbxScene* scene = nullptr;
-
-		// create FbxManager and import scene from file
-		FbxManager* sdkManager = CreateAndImport(_fbxFilepath, scene);
-
-
-		if (sdkManager == nullptr)
-			return result;
-
-		if (scene != nullptr)
-			result = ExtractFbxAnimation(scene, _outputFilepath);
-
-
-		sdkManager->Destroy();
-
-		return result;
+				// if geometry is a mesh, store mesh
+				if (geo_p->GetAttributeType() == FbxNodeAttribute::eMesh)
+				{
+					_mesh_p = (FbxMesh*)geo_p;
+					break;
+				}
+			}
 	}
 #pragma endregion
 
 #pragma region Utility Functions
-	FbxManager* CreateAndImport(const char* _fbxFilepath, FbxScene*& _scene)
+	int CreateAndImport(const char* _fbxFilepath, FbxManager*& _manager, FbxScene*& _scene)
 	{
 		// sdk manager handles memory management
-		FbxManager* sdkManager = FbxManager::Create();
+		_manager = FbxManager::Create();
+
+		// return FAIL if manager was not created
+		if (_manager == nullptr)
+			return FAIL;
 
 		// create IO settings object
-		FbxIOSettings* ios = FbxIOSettings::Create(sdkManager, "");
-		sdkManager->SetIOSettings(ios);
+		FbxIOSettings* ios = FbxIOSettings::Create(_manager, "");
+		_manager->SetIOSettings(ios);
 
 		// create importer using sdk manager
-		FbxImporter* importer = FbxImporter::Create(sdkManager, "");
+		FbxImporter* importer = FbxImporter::Create(_manager, "");
 
-		if (!importer->Initialize(_fbxFilepath, -1, sdkManager->GetIOSettings()))
+		// initialize importer, or display error info and return FAIL if initialization failed
+		if (!importer->Initialize(_fbxFilepath, -1, _manager->GetIOSettings()))
 		{
 			printf("Call to FbxImporter::Initialize() failed.\n");
 			printf("Error returned: %s\n\n", importer->GetStatus().GetErrorString());
-			return nullptr;
+			return FAIL;
 		}
 
 		// create new scene to populate with imported file
-		_scene = FbxScene::Create(sdkManager, "imported_scene");
+		_scene = FbxScene::Create(_manager, "imported_scene");
 
 		// import contents of file into scene
 		importer->Import(_scene);
 
 		importer->Destroy();
 
-		return sdkManager;
+		return SUCCESS;
 	}
 
 	SIMPLE_MATRIX FbxAMatrixToSimpleMatrix(FbxAMatrix _m)
@@ -227,46 +125,16 @@ namespace FBXLibrary
 		};
 	}
 
-	int ExtractFbxMesh(const FbxScene* _scene, const char* _outputFilepath, const char* _meshName, int32_t _meshElements)
+	int ExtractFbxMesh(const FbxScene* _scene_p, const char* _outputFilepath, const char* _meshName, int32_t _meshElements)
 	{
-		int result = -1;
+		int result = FAIL;
 
-		FbxScene* scene = (FbxScene*)_scene;
-		FbxMesh* mesh = nullptr;
+		FbxScene* scene_p = (FbxScene*)_scene_p;
+		FbxMesh* mesh_p = nullptr;
 
-		// search scene for mesh name
-		if (_meshName != nullptr)
-		{
-			// search scene for mesh name
-			for (int i = 0; i < scene->GetGeometryCount(); i++)
-			{
-				FbxGeometry* geo = scene->GetGeometry(i);
-
-				// if geometry is a mesh and name matches, store mesh
-				if (geo->GetAttributeType() == FbxNodeAttribute::eMesh && geo->GetName() == _meshName)
-				{
-					mesh = (FbxMesh*)geo;
-					break;
-				}
-			}
-		}
-		// if no mesh name is specified, use first mesh
-		else
-		{
-			// find first mesh in scene
-			for (int i = 0; i < scene->GetGeometryCount(); i++)
-			{
-				FbxGeometry* geo = scene->GetGeometry(i);
-
-				if (geo->GetAttributeType() == FbxNodeAttribute::eMesh)
-				{
-					mesh = (FbxMesh*)geo;
-					break;
-				}
-			}
-		}
-
-		if (mesh == nullptr)
+		// find mesh with specified name, or use first mesh if none is specified
+		GetFbxMeshFromScene(mesh_p, scene_p, _meshName);
+		if (mesh_p == nullptr)
 			return result;
 
 
@@ -274,12 +142,12 @@ namespace FBXLibrary
 
 		std::vector<SIMPLE_VERTEX> verts_raw;
 
-		int polygonCount = mesh->GetPolygonCount();
+		int polygonCount = mesh_p->GetPolygonCount();
 
 		// get polygon vertices (equivalent to vertex indices)
-		int* polygonVerts = mesh->GetPolygonVertices();
+		int* polygonVerts_p = mesh_p->GetPolygonVertices();
 		// get control points (equivalent to vertices)
-		const FbxVector4* controlPoints = mesh->GetControlPoints();
+		const FbxVector4* controlPoints_p = mesh_p->GetControlPoints();
 
 		// for each polygon in mesh
 		for (int i = 0; i < polygonCount; i++)
@@ -290,12 +158,12 @@ namespace FBXLibrary
 				SIMPLE_VERTEX vert;
 
 				int vertIndex = i * 3 + v;
-				int pointIndex = polygonVerts[vertIndex];
+				int pointIndex = polygonVerts_p[vertIndex];
 
 				// get vertex position
 				if (_meshElements & MESH_ELEMENT::POSITION)
 				{
-					FbxVector4 pos = controlPoints[pointIndex];
+					FbxVector4 pos = controlPoints_p[pointIndex];
 
 					vert.pos[0] = (float)pos[0];
 					vert.pos[1] = (float)pos[1];
@@ -305,7 +173,7 @@ namespace FBXLibrary
 				// get vertex normal
 				if (_meshElements & MESH_ELEMENT::NORMAL)
 				{
-					FbxGeometryElementNormal* normElement = mesh->GetElementNormal();
+					FbxGeometryElementNormal* normElement = mesh_p->GetElementNormal();
 
 					if (normElement != nullptr)
 					{
@@ -328,7 +196,7 @@ namespace FBXLibrary
 				// get vertex color
 				if (_meshElements & MESH_ELEMENT::COLOR)
 				{
-					FbxGeometryElementVertexColor* colorElement = mesh->GetElementVertexColor();
+					FbxGeometryElementVertexColor* colorElement = mesh_p->GetElementVertexColor();
 
 					if (colorElement != nullptr)
 					{
@@ -352,7 +220,7 @@ namespace FBXLibrary
 				// get vertex UV coord
 				if (_meshElements & MESH_ELEMENT::TEXCOORD)
 				{
-					FbxGeometryElementUV* uvElement = mesh->GetElementUV();
+					FbxGeometryElementUV* uvElement = mesh_p->GetElementUV();
 
 					if (uvElement != nullptr)
 					{
@@ -829,6 +697,176 @@ namespace FBXLibrary
 		joints_fbx.clear();
 		joints_out.clear();
 
+
+		return result;
+	}
+#pragma endregion
+
+#pragma region Interface Functions
+	int GetScenePolyCount(const char* _fbxFilepath)
+	{
+		int result = FAIL;
+
+		FbxScene* scene_p = nullptr;
+		FbxManager* manager_p = nullptr;
+
+		// create FbxManager and import scene from file
+		result = CreateAndImport(_fbxFilepath, manager_p, scene_p);
+		if (FAILED(result))
+			return result;
+
+		// verify scene import
+		if (scene_p == nullptr)
+			return FAIL;
+
+		// get geometry count from scene
+		int geoCount = scene_p->GetGeometryCount();
+
+		// set initial count
+		result = 0;
+
+		// iterate through scene geometries
+		for (int i = 0; i < geoCount; i++)
+		{
+			FbxGeometry* geo = scene_p->GetGeometry(i);
+
+			// skip non-mesh geometries
+			if (geo->GetAttributeType() != FbxNodeAttribute::eMesh)
+				continue;
+
+			// add mesh's polygon count to result
+			FbxMesh* mesh = (FbxMesh*)geo;
+			result += mesh->GetPolygonCount();
+		}
+
+		// set result to error if no polygons were counted
+		if (result < 1)
+			result = FAIL;
+
+		manager_p->Destroy();
+
+		return result;
+	}
+	int ExtractMesh(const char* _fbxFilepath, const char* _outputFilepath, const char* _meshName, int32_t _meshElements)
+	{
+		int result = FAIL;
+
+		FbxScene* scene_p = nullptr;
+		FbxManager* manager_p = nullptr;
+
+		// create FbxManager and import scene from file
+		result = CreateAndImport(_fbxFilepath, manager_p, scene_p);
+		if (FAILED(result))
+			return result;
+
+		// verify scene import
+		if (scene_p == nullptr)
+			return FAIL;
+
+		// extract mesh from scene
+		result = ExtractFbxMesh(scene_p, _outputFilepath, _meshName, _meshElements);
+
+		manager_p->Destroy();
+
+		return result;
+	}
+
+	int GetSceneMaterialCount(const char* _fbxFilepath)
+	{
+		int result = FAIL;
+
+		FbxScene* scene_p = nullptr;
+		FbxManager* manager_p = nullptr;
+
+		// create FbxManager and import scene from file
+		result = CreateAndImport(_fbxFilepath, manager_p, scene_p);
+		if (FAILED(result))
+			return result;
+
+		// verify scene import
+		if (scene_p == nullptr)
+			return FAIL;
+
+		// set result default
+		result = FAIL;
+
+		// get material count from scene
+		result = scene_p->GetMaterialCount();
+
+		manager_p->Destroy();
+
+		return result;
+	}
+	int ExtractMaterial(const char* _fbxFilepath, const char* _outputFilepath, uint32_t _matNum, int32_t _matElements)
+	{
+		int result = FAIL;
+
+		FbxScene* scene_p = nullptr;
+		FbxManager* manager_p = nullptr;
+
+		// create FbxManager and import scene from file
+		result = CreateAndImport(_fbxFilepath, manager_p, scene_p);
+		if (FAILED(result))
+			return result;
+
+		// verify scene import
+		if (scene_p == nullptr)
+			return FAIL;
+
+		// extract material from scene
+		result = ExtractFbxMaterial(scene_p, _outputFilepath, _matNum, _matElements);
+
+		manager_p->Destroy();
+
+		return result;
+	}
+
+	int GetScenePoseCount(const char* _fbxFilepath)
+	{
+		int result = FAIL;
+
+		FbxScene* scene_p = nullptr;
+		FbxManager* manager_p = nullptr;
+
+		// create FbxManager and import scene from file
+		result = CreateAndImport(_fbxFilepath, manager_p, scene_p);
+		if (FAILED(result))
+			return result;
+
+		// verify scene import
+		if (scene_p == nullptr)
+			return FAIL;
+
+		// set result default
+		result = FAIL;
+
+		// get pose count from scene
+		result = scene_p->GetPoseCount();
+
+		manager_p->Destroy();
+
+		return result;
+	}
+	int ExtractAnimation(const char* _fbxFilepath, const char* _outputFilepath)
+	{
+		int result = FAIL;
+
+		FbxScene* scene_p = nullptr;
+		FbxManager* manager_p = nullptr;
+
+		// create FbxManager and import scene from file
+		result = CreateAndImport(_fbxFilepath, manager_p, scene_p);
+		if (FAILED(result))
+			return result;
+
+		// verify scene import
+		if (scene_p == nullptr)
+			return FAIL;
+
+		// extract animation from scene
+		result = ExtractFbxAnimation(scene_p, _outputFilepath);
+				
+		manager_p->Destroy();
 
 		return result;
 	}

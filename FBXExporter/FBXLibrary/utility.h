@@ -97,7 +97,7 @@ extern "C" namespace FBXLibrary
 	};
 
 
-	FbxManager* CreateAndImport(const char* _fbxFilepath, FbxScene*& _scene);
+	int CreateAndImport(const char* _fbxFilepath, FbxManager*& _manager, FbxScene*& _scene);
 
 	SIMPLE_MATRIX FbxAMatrixToSimpleMatrix(FbxAMatrix _m);
 
