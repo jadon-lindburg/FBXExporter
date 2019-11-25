@@ -155,13 +155,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="debug.h" />
-    <ClInclude Include="interface.h" />
-    <ClInclude Include="utility.h" />
+    <ClInclude Include="lib_debug.h" />
+    <ClInclude Include="lib_interface.h" />
+    <ClInclude Include="lib_utility.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="implementation.cpp" />
+    <ClCompile Include="lib_implementation.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

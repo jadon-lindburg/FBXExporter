@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "interface.h"
+#include "exp_interface.h"
 
 
 void PrintResult(int _result, const char* _message)
@@ -13,6 +13,9 @@ void PrintResult(int _result, const char* _message)
 
 int main(int argc, char* argv[])
 {
+	// set automatic memory leak reporting on program exit
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+
 	int result = -1;
 
 	if (argc > 1)
@@ -65,7 +68,7 @@ int main(int argc, char* argv[])
 			std::cout << std::endl;
 
 			std::cout << "Exporting mesh..." << std::endl;
-			result = FBXExporter::Mesh::ExportMesh(filepath, nullptr, options);
+			result = FBXExporter::ExtractMesh(filepath, nullptr, options);
 			PrintResult(result, "Export mesh");
 
 #undef POSITION
@@ -95,7 +98,7 @@ int main(int argc, char* argv[])
 			std::cout << std::endl;
 
 			std::cout << "Exporting materials..." << std::endl;
-			result = FBXExporter::Material::ExportMaterials(filepath, options);
+			result = FBXExporter::ExtractMaterials(filepath, options);
 			PrintResult(result, "Export materials");
 
 #undef DIFFUSE
@@ -106,7 +109,7 @@ int main(int argc, char* argv[])
 
 		if (exports & ExportOptions::Animation)
 		{
-			result = FBXExporter::Animation::ExportAnimation(filepath);
+			result = FBXExporter::ExtractAnimation(filepath);
 			PrintResult(result, "Export animation");
 		}
 

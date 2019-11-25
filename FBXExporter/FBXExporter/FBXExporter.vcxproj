@@ -115,12 +115,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="implementation.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="exp_implementation.cpp" />
+    <ClCompile Include="exp_main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="interface.h" />
-    <ClInclude Include="utility.h" />
+    <ClInclude Include="exp_interface.h" />
+    <ClInclude Include="exp_utility.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FBXLibrary\FBXLibrary.vcxproj">

@@ -3,33 +3,19 @@
 #include <iostream>
 #include <vector>
 
-#include "debug.h"
-#include "interface.h"
-#include "utility.h"
+#include "lib_debug.h"
+#include "lib_interface.h"
+#include "lib_utility.h"
 
 
 namespace FBXLibrary
 {
-#pragma region Defines
-	// macros used to specify the result of functions and operations
-#define FAIL -1
-#define SUCCESS 0
-#define EXTRACT 1
-#define EXPORT 2
-
-	// macros used to test the result of functions and operations
-#define FAILED(r) (r < 0)
-#define SUCCEEDED(r) (r >= 0)
-
-	// char array used to store filepaths instead of char* because the inconsistent length of char* would make writing and reading files more complicated
-	using filepath_t = std::array<char, 260>;
-#pragma endregion
-
-
 #pragma region Private Helper Functions
-	// Searches a scene for a mesh name, or returns the first mesh if no name is specified
-	void GetFbxMeshFromScene(FbxMesh*& _mesh_p, FbxScene* _scene_p, const char* _meshName = nullptr)
+	// Searches a scene for a mesh with the name specified, or returns the first mesh if no name is specified
+	// Returns a result code
+	int GetFbxMeshFromScene(FbxMesh*& _mesh_p, FbxScene* _scene_p, const char* _meshName = nullptr)
 	{
+		int result = FAIL;
 		FbxGeometry* geo_p = nullptr;
 
 		// search scene for mesh name
@@ -60,6 +46,210 @@ namespace FBXLibrary
 					break;
 				}
 			}
+
+		if (_mesh_p != nullptr)
+			result = SUCCESS;
+
+		return result;
+	}
+
+	// Extracts raw vertices (control points) from a mesh
+	// Returns a result code
+	int ExtractVertsFromFbxMesh(std::vector<SIMPLE_VERTEX>& _verts, FbxMesh* _mesh_p, uint32_t _meshElements)
+	{
+		int result = FAIL;
+
+		// verify mesh exists
+		if (_mesh_p != nullptr)
+		{
+			// number of polygons in mesh
+			int polygonCount = _mesh_p->GetPolygonCount();
+
+			// array of FBX polygon vertices (equivalent to vertex indices)
+			int* vertexIndices = _mesh_p->GetPolygonVertices();
+
+			// array of FBX control points (equivalent to vertices)
+			const FbxVector4* controlPoints_p = _mesh_p->GetControlPoints();
+
+
+			// for each polygon in mesh
+			for (int i = 0; i < polygonCount; i++)
+			{
+				// for each vertex in polygon
+				for (int v = 0; v < 3; v++)
+				{
+					// vertex to read data into
+					SIMPLE_VERTEX vert;
+
+					// position of vertex's index in index list
+					int indexNum = i * 3 + v;
+
+					// vertex's index
+					int vertNum = vertexIndices[indexNum];
+
+					// get vertex elements
+					GetVertexElements(vert, controlPoints_p, _mesh_p, indexNum, vertNum, _meshElements);
+
+					// add vert to list
+					_verts.push_back(vert);
+				}
+			}
+
+			// verify vertices were extracted from mesh
+			if (_verts.size() > 0)
+				result = SUCCESS;
+		}
+
+		return result;
+	}
+
+	void GetVertexPosition(SIMPLE_VERTEX& _vert, const FbxVector4* _controlPoints_p, int _vertNum)
+	{
+		// get position from vertex (control point)
+		FbxVector4 pos = _controlPoints_p[_vertNum];
+
+		// store data
+		_vert.pos[0] = (float)pos[0];
+		_vert.pos[1] = (float)pos[1];
+		_vert.pos[2] = (float)pos[2];
+	}
+	void GetVertexNormal(SIMPLE_VERTEX& _vert, FbxMesh* _mesh_p, int _indexNum, int _vertNum)
+	{
+		// get normal element from mesh
+		FbxGeometryElementNormal* normElement = _mesh_p->GetElementNormal();
+
+		// verify normal element exists
+		if (normElement != nullptr)
+		{
+			// determine normal index
+			int normIndex = _indexNum;
+			if (normElement->GetMappingMode() == FbxLayerElement::EMappingMode::eByControlPoint)
+				normIndex = _vertNum;
+			if (normElement->GetReferenceMode() == FbxLayerElement::EReferenceMode::eIndexToDirect)
+				normIndex = normElement->GetIndexArray()[normIndex];
+
+			// get vertex normal from normal element
+			FbxVector4 norm = normElement->GetDirectArray()[normIndex];
+
+			// store data
+			_vert.norm[0] = (float)norm[0];
+			_vert.norm[1] = (float)norm[1];
+			_vert.norm[2] = (float)norm[2];
+		}
+	}
+	void GetVertexColor(SIMPLE_VERTEX& _vert, FbxMesh* _mesh_p, int _indexNum, int _vertNum)
+	{
+		// get color element from mesh
+		FbxGeometryElementVertexColor* colorElement = _mesh_p->GetElementVertexColor();
+
+		// verify color element exists
+		if (colorElement != nullptr)
+		{
+			// determine color index
+			int colorIndex = _indexNum;
+			if (colorElement->GetMappingMode() == FbxLayerElement::EMappingMode::eByControlPoint)
+				colorIndex = _vertNum;
+			if (colorElement->GetReferenceMode() == FbxLayerElement::EReferenceMode::eIndexToDirect)
+				colorIndex = colorElement->GetIndexArray()[colorIndex];
+
+			// get vertex color from color element
+			FbxColor color = colorElement->GetDirectArray()[colorIndex];
+
+			// store data
+			_vert.color[0] = (float)color[0];
+			_vert.color[1] = (float)color[1];
+			_vert.color[2] = (float)color[2];
+			_vert.color[3] = (float)color[3];
+		}
+	}
+	void GetVertexUV(SIMPLE_VERTEX& _vert, FbxMesh* _mesh_p, int _indexNum, int _vertNum)
+	{
+		// get UV element from mesh
+		FbxGeometryElementUV* uvElement = _mesh_p->GetElementUV();
+
+		// verify UV element exists
+		if (uvElement != nullptr)
+		{
+			// determine UV index
+			int uvIndex = _indexNum;
+			if (uvElement->GetMappingMode() == FbxLayerElement::EMappingMode::eByControlPoint)
+				uvIndex = _vertNum;
+			if (uvElement->GetReferenceMode() == FbxLayerElement::EReferenceMode::eIndexToDirect)
+				uvIndex = uvElement->GetIndexArray()[uvIndex];
+
+			// get vertex texcoord from UV element
+			FbxVector2 tex = uvElement->GetDirectArray()[uvIndex];
+
+			// store data
+			_vert.tex[0] = (float)tex[0];
+			_vert.tex[1] = (float)(1.0f - tex[1]);
+		}
+	}
+
+	void GetVertexElements(SIMPLE_VERTEX& _vert, const FbxVector4* _controlPoints_p, const FbxMesh* _mesh_p, int _indexNum, int _vertNum, uint32_t _meshElements)
+	{
+		// if position flag is set, get position
+		if (_meshElements & MESH_ELEMENT::POSITION)
+			GetVertexPosition(_vert, _controlPoints_p, _vertNum);
+
+		// if normal flag is set, get normal
+		if (_meshElements & MESH_ELEMENT::NORMAL)
+			GetVertexNormal(_vert, (FbxMesh*)_mesh_p, _indexNum, _vertNum);
+
+		// if color flag is set, get color
+		if (_meshElements & MESH_ELEMENT::COLOR)
+			GetVertexColor(_vert, (FbxMesh*)_mesh_p, _indexNum, _vertNum);
+
+		// if texcoord flag is set, get UV
+		if (_meshElements & MESH_ELEMENT::TEXCOORD)
+			GetVertexUV(_vert, (FbxMesh*)_mesh_p, _indexNum, _vertNum);
+	}
+
+	// Compares vertices in a list and generates a list of unique verts and a list of indices
+	// Returns a result code
+	int CompactifyVerts(std::vector<SIMPLE_VERTEX>& _verts_raw, std::vector<SIMPLE_VERTEX>& _verts_unique, std::vector<uint32_t> _indices)
+	{
+		int result = FAIL;
+
+		// for all raw vertices
+		for (int i = 0; i < _verts_raw.size(); i++)
+		{
+			// get vertex number i
+			SIMPLE_VERTEX vert = _verts_raw[i];
+
+			// index to add to index list
+			uint32_t index = 0;
+
+			bool isUnique = true;
+
+			// compare current vert to all unique vertices
+			for (int v = 0; v < _verts_unique.size(); v++)
+			{
+				// if vert matches a unique vert, mark as not unique and store index of matching vert
+				if (vert == _verts_unique[v])
+				{
+					isUnique = false;
+					index = v;
+					break;
+				}
+			}
+
+			// if vert is unique, store new index and add vert to unique vert list
+			if (isUnique)
+			{
+				index = (uint32_t)_verts_unique.size();
+				_verts_unique.push_back(vert);
+			}
+
+			// store index
+			_indices.push_back(index);
+		}
+
+		// verify verts and inds were generated
+		if (_verts_unique.size() > 0 && _indices.size() > 0)
+			result = SUCCESS;
+
+		return result;
 	}
 #pragma endregion
 
@@ -125,208 +315,38 @@ namespace FBXLibrary
 		};
 	}
 
-	int ExtractFbxMesh(const FbxScene* _scene_p, const char* _outputFilepath, const char* _meshName, int32_t _meshElements)
+	int ExtractFbxMesh(const FbxScene* _scene_p, const char* _outputFilepath, SIMPLE_MESH& _simple_mesh, const char* _meshName, int32_t _meshElements)
 	{
 		int result = FAIL;
 
 		FbxScene* scene_p = (FbxScene*)_scene_p;
 		FbxMesh* mesh_p = nullptr;
 
-		// find mesh with specified name, or use first mesh if none is specified
-		GetFbxMeshFromScene(mesh_p, scene_p, _meshName);
-		if (mesh_p == nullptr)
-			return result;
-
-
-		// -- extract vertices from mesh --
-
+		// uncompactified vertex data
 		std::vector<SIMPLE_VERTEX> verts_raw;
 
-		int polygonCount = mesh_p->GetPolygonCount();
+		// find mesh with specified name, or use first mesh if none is specified
+		result = GetFbxMeshFromScene(mesh_p, scene_p, _meshName);
+		if (FAILED(result))
+			return result;
 
-		// get polygon vertices (equivalent to vertex indices)
-		int* polygonVerts_p = mesh_p->GetPolygonVertices();
-		// get control points (equivalent to vertices)
-		const FbxVector4* controlPoints_p = mesh_p->GetControlPoints();
+		// extract raw vertices from mesh
+		result = ExtractVertsFromFbxMesh(verts_raw, mesh_p, _meshElements);
+		if (FAILED(result))
+			return result;
 
-		// for each polygon in mesh
-		for (int i = 0; i < polygonCount; i++)
-		{
-			// for each vertex in polygon
-			for (int v = 0; v < 3; v++)
-			{
-				SIMPLE_VERTEX vert;
-
-				int vertIndex = i * 3 + v;
-				int pointIndex = polygonVerts_p[vertIndex];
-
-				// get vertex position
-				if (_meshElements & MESH_ELEMENT::POSITION)
-				{
-					FbxVector4 pos = controlPoints_p[pointIndex];
-
-					vert.pos[0] = (float)pos[0];
-					vert.pos[1] = (float)pos[1];
-					vert.pos[2] = (float)pos[2];
-				}
-
-				// get vertex normal
-				if (_meshElements & MESH_ELEMENT::NORMAL)
-				{
-					FbxGeometryElementNormal* normElement = mesh_p->GetElementNormal();
-
-					if (normElement != nullptr)
-					{
-						int normIndex = vertIndex;
-
-						if (normElement->GetMappingMode() == FbxLayerElement::EMappingMode::eByControlPoint)
-							normIndex = pointIndex;
-
-						if (normElement->GetReferenceMode() == FbxLayerElement::EReferenceMode::eIndexToDirect)
-							normIndex = normElement->GetIndexArray()[normIndex];
-
-						FbxVector4 norm = normElement->GetDirectArray()[normIndex];
-
-						vert.norm[0] = (float)norm[0];
-						vert.norm[1] = (float)norm[1];
-						vert.norm[2] = (float)norm[2];
-					}
-				}
-
-				// get vertex color
-				if (_meshElements & MESH_ELEMENT::COLOR)
-				{
-					FbxGeometryElementVertexColor* colorElement = mesh_p->GetElementVertexColor();
-
-					if (colorElement != nullptr)
-					{
-						int colorIndex = vertIndex;
-
-						if (colorElement->GetMappingMode() == FbxLayerElement::EMappingMode::eByControlPoint)
-							colorIndex = pointIndex;
-
-						if (colorElement->GetReferenceMode() == FbxLayerElement::EReferenceMode::eIndexToDirect)
-							colorIndex = colorElement->GetIndexArray()[colorIndex];
-
-						FbxColor color = colorElement->GetDirectArray()[colorIndex];
-
-						vert.color[0] = (float)color[0];
-						vert.color[1] = (float)color[1];
-						vert.color[2] = (float)color[2];
-						vert.color[3] = (float)color[3];
-					}
-				}
-
-				// get vertex UV coord
-				if (_meshElements & MESH_ELEMENT::TEXCOORD)
-				{
-					FbxGeometryElementUV* uvElement = mesh_p->GetElementUV();
-
-					if (uvElement != nullptr)
-					{
-						int uvIndex = vertIndex;
-
-						if (uvElement->GetMappingMode() == FbxLayerElement::EMappingMode::eByControlPoint)
-							uvIndex = pointIndex;
-
-						if (uvElement->GetReferenceMode() == FbxLayerElement::EReferenceMode::eIndexToDirect)
-							uvIndex = uvElement->GetIndexArray()[uvIndex];
-
-						FbxVector2 tex = uvElement->GetDirectArray()[uvIndex];
-
-						vert.tex[0] = (float)tex[0];
-						vert.tex[1] = (float)(1.0f - tex[1]);
-					}
-				}
-
-				// add vert to list
-				verts_raw.push_back(vert);
-			}
-		}
-
-		// -- /extract vertices from mesh --
-
-
-		// -- index data --
-
-		std::vector<SIMPLE_VERTEX> verts_out;
-		std::vector<uint32_t> inds_out;
-
-		// test all verts
-		for (int i = 0; i < verts_raw.size(); i++)
-		{
-			SIMPLE_VERTEX vert = verts_raw[i];
-
-			bool unique = true;
-			uint32_t index = 0;
-
-			// compare current vert to unique verts
-			for (int v = 0; v < verts_out.size(); v++)
-			{
-				// if vert matches a unique vert, store index and move on
-				if (vert == verts_out[v])
-				{
-					unique = false;
-					index = v;
-					break;
-				}
-			}
-
-			// if vert is unique, get new index and add to unique vert list
-			if (unique)
-			{
-				index = (uint32_t)verts_out.size();
-				verts_out.push_back(vert);
-			}
-
-			inds_out.push_back(index);
-		}
-
-		// -- /index data --
-
-
-		// -- write to file --
-
-		// open or create output file for writing
-		std::fstream fout = std::fstream(_outputFilepath, std::ios_base::out | std::ios_base::binary);
-
-		// verify file is open
-		if (fout.is_open())
-		{
-			uint32_t numVerts = (uint32_t)verts_out.size();
-			uint32_t numInds = (uint32_t)inds_out.size();
-			uint32_t numBytes = sizeof(numVerts) + sizeof(numInds) + (numVerts * sizeof(SIMPLE_VERTEX)) + (numInds * sizeof(uint32_t));
-			float reductionAmount = (verts_raw.size() - verts_out.size()) / (verts_raw.size() * 1.0f) * 100;
-
-			// write data to file with format:
-			//   uint32_t											: number of vertices
-			//   { float3, float3, float4, float2 }[numVerts]		: vertex data
-			//   uint32_t											: number of indices
-			//   uint32_t[numInds]									: index data
-			fout.write((const char*)&numVerts, sizeof(numVerts));
-			fout.write((const char*)&verts_out[0], numVerts * sizeof(SIMPLE_VERTEX));
-			fout.write((const char*)&numInds, sizeof(numInds));
-			fout.write((const char*)&inds_out[0], numInds * sizeof(uint32_t));
-
-
-			std::cout
-				<< "Raw vertex count : " << verts_raw.size() << std::endl
-				<< "Unique vertex count : " << verts_out.size() << std::endl
-				<< "Reduction : " << reductionAmount << "%" << std::endl
-				<< "Index count : " << inds_out.size() << std::endl
-				<< "Wrote " << numBytes << " bytes to file" << std::endl
-				<< std::endl;
-
-
-			result = 0;
-		}
-
-		// -- /write to file --
-
+		// compactify data
+		result = CompactifyVerts(verts_raw, _simple_mesh.vertices, _simple_mesh.indices);
+		if (FAILED(result))
+			return result;
+		
+		// store vertex and index count
+		_simple_mesh.vertex_count = _simple_mesh.vertices.size();
+		_simple_mesh.index_count = _simple_mesh.indices.size();
 
 		return result;
 	}
-	int ExtractFbxMaterial(const FbxScene* _scene, const char* _outputFilepath, uint32_t _matNum, int32_t _matElements)
+	int ExtractFbxMaterial(const FbxScene* _scene, const char* _outputFilepath, SIMPLE_MATERIAL_LIST& _simple_material_list, uint32_t _matNum, int32_t _matElements)
 	{
 		int result = -1;
 
@@ -479,8 +499,8 @@ namespace FBXLibrary
 				<< "Filepaths : " << std::endl;
 			for (uint8_t i = 0; i < filepaths.size(); i++)
 			{
-				char* path = NEW char[260];
-				memcpy(&path[0], &filepaths[i][0], 260);
+				char path[260];
+				memcpy(path, &filepaths[i][0], 260);
 				std::cout << path << std::endl;
 			}
 			std::cout
@@ -496,7 +516,7 @@ namespace FBXLibrary
 
 		return result;
 	}
-	int ExtractFbxAnimation(const FbxScene* _scene, const char* _outputFilepath)
+	int ExtractFbxAnimation(const FbxScene* _scene, const char* _outputFilepath, SIMPLE_ANIM_CLIP& _simple_anim_clip, uint32_t _animElements)
 	{
 		int result = -1;
 
@@ -747,7 +767,7 @@ namespace FBXLibrary
 
 		return result;
 	}
-	int ExtractMesh(const char* _fbxFilepath, const char* _outputFilepath, const char* _meshName, int32_t _meshElements)
+	int ExtractMesh(const char* _fbxFilepath, const char* _outputFilepath, SIMPLE_MESH& _simple_mesh, const char* _meshName, int32_t _meshElements)
 	{
 		int result = FAIL;
 
@@ -764,7 +784,7 @@ namespace FBXLibrary
 			return FAIL;
 
 		// extract mesh from scene
-		result = ExtractFbxMesh(scene_p, _outputFilepath, _meshName, _meshElements);
+		result = ExtractFbxMesh(scene_p, _outputFilepath, _simple_mesh, _meshName, _meshElements);
 
 		manager_p->Destroy();
 
@@ -797,7 +817,7 @@ namespace FBXLibrary
 
 		return result;
 	}
-	int ExtractMaterial(const char* _fbxFilepath, const char* _outputFilepath, uint32_t _matNum, int32_t _matElements)
+	int ExtractMaterial(const char* _fbxFilepath, const char* _outputFilepath, SIMPLE_MATERIAL_LIST& _simple_material_list, uint32_t _matNum, int32_t _matElements)
 	{
 		int result = FAIL;
 
@@ -814,7 +834,7 @@ namespace FBXLibrary
 			return FAIL;
 
 		// extract material from scene
-		result = ExtractFbxMaterial(scene_p, _outputFilepath, _matNum, _matElements);
+		result = ExtractFbxMaterial(scene_p, _outputFilepath, _simple_material_list, _matNum, _matElements);
 
 		manager_p->Destroy();
 
@@ -847,7 +867,7 @@ namespace FBXLibrary
 
 		return result;
 	}
-	int ExtractAnimation(const char* _fbxFilepath, const char* _outputFilepath)
+	int ExtractAnimation(const char* _fbxFilepath, const char* _outputFilepath, SIMPLE_ANIM_CLIP& _simple_anim_clip, uint32_t _animElements)
 	{
 		int result = FAIL;
 
@@ -864,8 +884,8 @@ namespace FBXLibrary
 			return FAIL;
 
 		// extract animation from scene
-		result = ExtractFbxAnimation(scene_p, _outputFilepath);
-				
+		result = ExtractFbxAnimation(scene_p, _outputFilepath, _simple_anim_clip, _animElements);
+
 		manager_p->Destroy();
 
 		return result;
