@@ -1,12 +1,16 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
+#include <vector>
+
 
 #ifdef FBXLIB_EXPORTS
 #define FBXLIB_INTERFACE __declspec(dllexport)
 #else
 #define FBXLIB_INTERFACE __declspec(dllimport)
 #endif
+
 
 namespace FBXLibrary
 {
@@ -138,14 +142,6 @@ namespace FBXLibrary
 		std::vector<filepath_t>			filepaths;
 	};
 
-	// Joint with FbxNode and parent index
-	// Parent index -1 indicates no parent
-	struct FBX_JOINT
-	{
-		FbxNode*	node;
-		int			parent_index = -1;
-	};
-
 	// Joint with matrix transform and parent index
 	// Parent index -1 indicates no parent
 	struct SIMPLE_JOINT
@@ -172,35 +168,32 @@ namespace FBXLibrary
 
 #pragma region Functions
 	// Returns count of polygons in scene, or error code if failed
-	FBXLIB_INTERFACE int GetScenePolyCount(const char* _fbxFilepath);
+	FBXLIB_INTERFACE int GetScenePolyCount(const char* _fbx_filepath);
 
 	// Extracts mesh from scene and converts it for loading
 	// Returns result code
 	// NOTES:
 	//   Use _meshName to search for mesh by name, otherwise first mesh is used by default
 	//   Use _meshElements to specify which supported elements to store (others default to 0)
-	FBXLIB_INTERFACE int ExtractMesh(const char* _fbxFilepath, const char* _outputFilepath,
-		SIMPLE_MESH& _simple_mesh, const char* _meshName = nullptr, int32_t _meshElements = 0);
+	FBXLIB_INTERFACE int ExtractMesh(const char* _fbx_filepath, SIMPLE_MESH& _mesh, const char* _meshName = nullptr, int32_t _elementOptions = 0);
 
 	// Returns count of materials in scene, or error code if failed
-	FBXLIB_INTERFACE int GetSceneMaterialCount(const char* _fbxFilepath);
+	FBXLIB_INTERFACE int GetSceneMaterialCount(const char* _fbx_filepath);
 
 	// Extracts material from scene and converts it for loading
 	// Returns result code
 	// NOTES:
 	//   Use _matElements to specify which supported elements to store (others default to 0)
-	FBXLIB_INTERFACE int ExtractMaterial(const char* _fbxFilepath, const char* _outputFilepath,
-		SIMPLE_MATERIAL_LIST& _simple_material_list, uint32_t _matNum = 0, int32_t _matElements = 0);
+	FBXLIB_INTERFACE int ExtractMaterial(const char* _fbx_filepath, SIMPLE_MATERIAL_LIST& _material_list, uint32_t _matNum = 0, int32_t _elementOptions = 0);
 
 	// Returns count of poses in scene, or error code if failed
-	FBXLIB_INTERFACE int GetScenePoseCount(const char* _fbxFilepath);
+	FBXLIB_INTERFACE int GetScenePoseCount(const char* _fbx_filepath);
 
 	// Extracts animation from scene and converts it for loading
 	// Returns result code
 	// NOTES:
 	//   Exports at 30 frames per second
-	FBXLIB_INTERFACE int ExtractAnimation(const char* _fbxFilepath, const char* _outputFilepath,
-		SIMPLE_ANIM_CLIP& _simple_anim_clip, uint32_t _animElements = 0);
+	FBXLIB_INTERFACE int ExtractAnimation(const char* _fbx_filepath, SIMPLE_ANIM_CLIP& _anim_clip, uint32_t _elementOptions = 0);
 #pragma endregion
 
 }

@@ -8,14 +8,23 @@
 
 namespace FBXLibrary
 {
-	int CreateAndImport(const char* _fbxFilepath, FbxManager*& _manager, FbxScene*& _scene);
+	// Joint with FbxNode and parent index
+	// Parent index -1 indicates no parent
+	struct FBX_JOINT
+	{
+		FbxNode*	fbx_node_p;
+		int			parent_index = -1;
+	};
+
+
+	int CreateAndImport(const char* _fbx_filepath, FbxManager*& _fbx_manager_p, FbxScene*& _scene);
 
 	SIMPLE_MATRIX FbxAMatrixToSimpleMatrix(FbxAMatrix _m);
 
-	int ExtractFbxMesh(const FbxScene* _scene, const char* _outputFilepath, SIMPLE_MESH& _simple_mesh, const char* _meshName, int32_t _meshElements);
+	int ExtractFbxMesh(const FbxScene* _fbx_scene_p, SIMPLE_MESH& _mesh, const char* _meshName, int32_t _elementOptions);
 
-	int ExtractFbxMaterial(const FbxScene* _scene, const char* _outputFilepath, SIMPLE_MATERIAL_LIST& _simple_material_list, uint32_t _matNum, int32_t _matElements);
+	int ExtractFbxMaterial(const FbxScene* _fbx_scene_p, SIMPLE_MATERIAL_LIST& _material_list, uint32_t _matNum, int32_t _elementOptions);
 
-	int ExtractFbxAnimation(const FbxScene* _scene, const char* _outputFilepath, SIMPLE_ANIM_CLIP& _simple_anim_clip, uint32_t _animElements);
+	int ExtractFbxAnimation(const FbxScene* _fbx_scene_p, SIMPLE_ANIM_CLIP& _anim_clip, uint32_t _elementOptions);
 
 }
