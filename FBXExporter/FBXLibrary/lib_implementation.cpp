@@ -10,164 +10,156 @@
 namespace FBXLibrary
 {
 #pragma region Private Helper Functions
-	int GetFbxMeshFromScene(FbxMesh*& _fbx_mesh_p, FbxScene* _fbx_scene_p, const char* _meshName = nullptr)
+	// FBX helpers
+
+	int GetFbxMeshFromFbxScene(FbxScene* _in_fbx_scene_p, const char* _in_meshName, FbxMesh*& _out_fbx_mesh_p)
 	{
-		int result = FAIL;
+		int out_result = FAIL;
 		FbxGeometry* fbx_geometry_p = nullptr;
 
-		// search scene for mesh name
-		if (_meshName != nullptr)
-			// search scene for mesh name
-			for (int i = 0; i < _fbx_scene_p->GetGeometryCount(); i++)
-			{
-				fbx_geometry_p = _fbx_scene_p->GetGeometry(i);
+		// search scene for mesh
+		for (int i = 0; i < _in_fbx_scene_p->GetGeometryCount(); i++)
+		{
+			// get next geometry from scene
+			fbx_geometry_p = _in_fbx_scene_p->GetGeometry(i);
 
-				// if geometry is a mesh and name matches, store mesh
-				if (fbx_geometry_p->GetAttributeType() == FbxNodeAttribute::eMesh && fbx_geometry_p->GetName() == _meshName)
+			// skip non-mesh geometries
+			if (fbx_geometry_p->GetAttributeType() == FbxNodeAttribute::eMesh)
+				// keep first mesh with a matching name, or keep first mesh in scene if no name is specified
+				if (
+					(_in_meshName != nullptr && fbx_geometry_p->GetName() == _in_meshName)
+					|| _in_meshName == nullptr
+					)
 				{
-					_fbx_mesh_p = (FbxMesh*)fbx_geometry_p;
+					// store geometry as mesh
+					_out_fbx_mesh_p = (FbxMesh*)fbx_geometry_p;
+
 					break;
 				}
-			}
-		// if no mesh name is specified, use first mesh
-		else
-			// find first mesh in scene
-			for (int i = 0; i < _fbx_scene_p->GetGeometryCount(); i++)
-			{
-				fbx_geometry_p = _fbx_scene_p->GetGeometry(i);
+		}
 
-				// if geometry is a mesh, store mesh
-				if (fbx_geometry_p->GetAttributeType() == FbxNodeAttribute::eMesh)
-				{
-					_fbx_mesh_p = (FbxMesh*)fbx_geometry_p;
-					break;
-				}
-			}
+		// verify that a mesh was extracted
+		if (_out_fbx_mesh_p != nullptr)
+			out_result = SUCCESS;
 
-		if (_fbx_mesh_p != nullptr)
-			result = SUCCESS;
-
-		return result;
+		return out_result;
 	}
 
-	void GetVertexPosition(SIMPLE_VERTEX& _vert, const FbxVector4* _fbx_controlPoints_p, int _vertNum)
+
+	// mesh helpers
+
+	void GetPositionFromFbxControlPoint(const FbxVector4* _in_fbx_controlPoints_p, int _in_controlPointIndex, SIMPLE_VERTEX& _out_vertex)
 	{
-		// get position from vertex (control point)
-		FbxVector4 pos = _fbx_controlPoints_p[_vertNum];
+		// get position from control point (vertex)
+		FbxVector4 pos = _in_fbx_controlPoints_p[_in_controlPointIndex];
 
 		// store data
-		_vert.pos[0] = (float)pos[0];
-		_vert.pos[1] = (float)pos[1];
-		_vert.pos[2] = (float)pos[2];
+		_out_vertex.pos[0] = (float)pos[0];
+		_out_vertex.pos[1] = (float)pos[1];
+		_out_vertex.pos[2] = (float)pos[2];
 	}
-	void GetVertexNormal(SIMPLE_VERTEX& _vert, FbxMesh* _fbx_mesh_p, int _indexNum, int _vertNum)
+	void GetNormalFromFbxControlPoint(FbxMesh* _in_fbx_mesh_p, int _in_polygonVertexIndex, int _in_polygonVertex, SIMPLE_VERTEX& _out_vertex)
 	{
 		// get normal element from mesh
-		FbxGeometryElementNormal* normElement = _fbx_mesh_p->GetElementNormal();
+		FbxGeometryElementNormal* fbx_normalElement_p = _in_fbx_mesh_p->GetElementNormal();
 
 		// verify normal element exists
-		if (normElement != nullptr)
+		if (fbx_normalElement_p != nullptr)
 		{
 			// determine normal index
-			int normIndex = _indexNum;
-			if (normElement->GetMappingMode() == FbxLayerElement::EMappingMode::eByControlPoint)
-				normIndex = _vertNum;
-			if (normElement->GetReferenceMode() == FbxLayerElement::EReferenceMode::eIndexToDirect)
-				normIndex = normElement->GetIndexArray()[normIndex];
+			int normalIndex = _in_polygonVertexIndex;
+			if (fbx_normalElement_p->GetMappingMode() == FbxLayerElement::EMappingMode::eByControlPoint)
+				normalIndex = _in_polygonVertex;
+			if (fbx_normalElement_p->GetReferenceMode() == FbxLayerElement::EReferenceMode::eIndexToDirect)
+				normalIndex = fbx_normalElement_p->GetIndexArray()[normalIndex];
 
 			// get vertex normal from normal element
-			FbxVector4 norm = normElement->GetDirectArray()[normIndex];
+			FbxVector4 norm = fbx_normalElement_p->GetDirectArray()[normalIndex];
 
 			// store data
-			_vert.norm[0] = (float)norm[0];
-			_vert.norm[1] = (float)norm[1];
-			_vert.norm[2] = (float)norm[2];
+			_out_vertex.norm[0] = (float)norm[0];
+			_out_vertex.norm[1] = (float)norm[1];
+			_out_vertex.norm[2] = (float)norm[2];
 		}
 	}
-	void GetVertexColor(SIMPLE_VERTEX& _vert, FbxMesh* _fbx_mesh_p, int _indexNum, int _vertNum)
+	void GetColorFromFbxControlPoint(FbxMesh* _in_fbx_mesh_p, int _in_polygonVertexIndex, int _in_polygonVertex, SIMPLE_VERTEX& _out_vertex)
 	{
 		// get color element from mesh
-		FbxGeometryElementVertexColor* colorElement = _fbx_mesh_p->GetElementVertexColor();
+		FbxGeometryElementVertexColor* fbx_colorElement_p = _in_fbx_mesh_p->GetElementVertexColor();
 
 		// verify color element exists
-		if (colorElement != nullptr)
+		if (fbx_colorElement_p != nullptr)
 		{
 			// determine color index
-			int colorIndex = _indexNum;
-			if (colorElement->GetMappingMode() == FbxLayerElement::EMappingMode::eByControlPoint)
-				colorIndex = _vertNum;
-			if (colorElement->GetReferenceMode() == FbxLayerElement::EReferenceMode::eIndexToDirect)
-				colorIndex = colorElement->GetIndexArray()[colorIndex];
+			int colorIndex = _in_polygonVertexIndex;
+			if (fbx_colorElement_p->GetMappingMode() == FbxLayerElement::EMappingMode::eByControlPoint)
+				colorIndex = _in_polygonVertex;
+			if (fbx_colorElement_p->GetReferenceMode() == FbxLayerElement::EReferenceMode::eIndexToDirect)
+				colorIndex = fbx_colorElement_p->GetIndexArray()[colorIndex];
 
 			// get vertex color from color element
-			FbxColor color = colorElement->GetDirectArray()[colorIndex];
+			FbxColor color = fbx_colorElement_p->GetDirectArray()[colorIndex];
 
 			// store data
-			_vert.color[0] = (float)color[0];
-			_vert.color[1] = (float)color[1];
-			_vert.color[2] = (float)color[2];
-			_vert.color[3] = (float)color[3];
+			_out_vertex.color[0] = (float)color[0];
+			_out_vertex.color[1] = (float)color[1];
+			_out_vertex.color[2] = (float)color[2];
+			_out_vertex.color[3] = (float)color[3];
 		}
 	}
-	void GetVertexUV(SIMPLE_VERTEX& _vert, FbxMesh* _fbx_mesh_p, int _indexNum, int _vertNum)
+	void GetTexCoordFromFbxControlPoint(FbxMesh* _in_fbx_mesh_p, int _in_polygonVertexIndex, int _in_polygonVertex, SIMPLE_VERTEX& _out_vertex)
 	{
 		// get UV element from mesh
-		FbxGeometryElementUV* uvElement = _fbx_mesh_p->GetElementUV();
+		FbxGeometryElementUV* fbx_uvElement_p = _in_fbx_mesh_p->GetElementUV();
 
 		// verify UV element exists
-		if (uvElement != nullptr)
+		if (fbx_uvElement_p != nullptr)
 		{
-			// determine UV index
-			int uvIndex = _indexNum;
-			if (uvElement->GetMappingMode() == FbxLayerElement::EMappingMode::eByControlPoint)
-				uvIndex = _vertNum;
-			if (uvElement->GetReferenceMode() == FbxLayerElement::EReferenceMode::eIndexToDirect)
-				uvIndex = uvElement->GetIndexArray()[uvIndex];
+			// determine texture coordinate index
+			int texCoordIndex = _in_polygonVertexIndex;
+			if (fbx_uvElement_p->GetMappingMode() == FbxLayerElement::EMappingMode::eByControlPoint)
+				texCoordIndex = _in_polygonVertex;
+			if (fbx_uvElement_p->GetReferenceMode() == FbxLayerElement::EReferenceMode::eIndexToDirect)
+				texCoordIndex = fbx_uvElement_p->GetIndexArray()[texCoordIndex];
 
 			// get vertex texcoord from UV element
-			FbxVector2 tex = uvElement->GetDirectArray()[uvIndex];
+			FbxVector2 texCoord = fbx_uvElement_p->GetDirectArray()[texCoordIndex];
 
 			// store data
-			_vert.tex[0] = (float)tex[0];
-			_vert.tex[1] = (float)(1.0f - tex[1]);
+			_out_vertex.texCoord[0] = (float)texCoord[0];
+			_out_vertex.texCoord[1] = (float)(1.0f - texCoord[1]);
 		}
 	}
 
-	void GetVertexElements(SIMPLE_VERTEX& _vert, const FbxVector4* _fbx_controlPoints_p,
-		const FbxMesh* _fbx_mesh_p, int _indexNum, int _vertNum, uint32_t _elementOptions)
+	void GetElementsFromFbxControlPoint(const FbxVector4* _in_fbx_controlPoints_p, const FbxMesh* _in_fbx_mesh_p,
+		int _in_polygonVertexIndex, int _in_polygonVertex, uint32_t _in_elementsToExtract, SIMPLE_VERTEX& _out_vertex)
 	{
-		// if position flag is set, get position
-		if (_elementOptions & MESH_ELEMENT::POSITION)
-			GetVertexPosition(_vert, _fbx_controlPoints_p, _vertNum);
-
-		// if normal flag is set, get normal
-		if (_elementOptions & MESH_ELEMENT::NORMAL)
-			GetVertexNormal(_vert, (FbxMesh*)_fbx_mesh_p, _indexNum, _vertNum);
-
-		// if color flag is set, get color
-		if (_elementOptions & MESH_ELEMENT::COLOR)
-			GetVertexColor(_vert, (FbxMesh*)_fbx_mesh_p, _indexNum, _vertNum);
-
-		// if texcoord flag is set, get UV
-		if (_elementOptions & MESH_ELEMENT::TEXCOORD)
-			GetVertexUV(_vert, (FbxMesh*)_fbx_mesh_p, _indexNum, _vertNum);
+		// get elements from FBX control point if flags are set
+		if (_in_elementsToExtract & MESH_ELEMENT::POSITION)
+			GetPositionFromFbxControlPoint(_in_fbx_controlPoints_p, _in_polygonVertex, _out_vertex);
+		if (_in_elementsToExtract & MESH_ELEMENT::NORMAL)
+			GetNormalFromFbxControlPoint((FbxMesh*)_in_fbx_mesh_p, _in_polygonVertexIndex, _in_polygonVertex, _out_vertex);
+		if (_in_elementsToExtract & MESH_ELEMENT::COLOR)
+			GetColorFromFbxControlPoint((FbxMesh*)_in_fbx_mesh_p, _in_polygonVertexIndex, _in_polygonVertex, _out_vertex);
+		if (_in_elementsToExtract & MESH_ELEMENT::TEXCOORD)
+			GetTexCoordFromFbxControlPoint((FbxMesh*)_in_fbx_mesh_p, _in_polygonVertexIndex, _in_polygonVertex, _out_vertex);
 	}
 
-	int ExtractVertsFromFbxMesh(std::vector<SIMPLE_VERTEX>& _verts, FbxMesh* _fbx_mesh_p, uint32_t _elementOptions)
+	int GetVerticesFromFbxMesh(FbxMesh* _in_fbx_mesh_p, uint32_t _in_elementsToExtract, std::vector<SIMPLE_VERTEX>& _out_vertices)
 	{
-		int result = FAIL;
+		int out_result = FAIL;
 
-		// verify mesh exists
-		if (_fbx_mesh_p != nullptr)
+		// verify that fbx is initialized
+		if (_in_fbx_mesh_p != nullptr)
 		{
 			// number of polygons in mesh
-			int polygonCount = _fbx_mesh_p->GetPolygonCount();
+			int polygonCount = _in_fbx_mesh_p->GetPolygonCount();
 
 			// array of FBX polygon vertices (equivalent to vertex indices)
-			int* vertexIndices = _fbx_mesh_p->GetPolygonVertices();
+			int* polygonVertices_p = _in_fbx_mesh_p->GetPolygonVertices();
 
 			// array of FBX control points (equivalent to vertices)
-			const FbxVector4* controlPoints_p = _fbx_mesh_p->GetControlPoints();
+			const FbxVector4* fbx_controlPoints_p = _in_fbx_mesh_p->GetControlPoints();
 
 
 			// for each polygon in mesh
@@ -177,321 +169,361 @@ namespace FBXLibrary
 				for (int v = 0; v < 3; v++)
 				{
 					// vertex to read data into
-					SIMPLE_VERTEX vert;
+					SIMPLE_VERTEX vertex;
 
 					// position of vertex's index in index list
-					int indexNum = i * 3 + v;
+					int polygonVertexIndex = i * 3 + v;
 
-					// vertex's index
-					int vertNum = vertexIndices[indexNum];
+					// vertex's index from index list
+					int polygonVertex = polygonVertices_p[polygonVertexIndex];
 
-					// get vertex elements
-					GetVertexElements(vert, controlPoints_p, _fbx_mesh_p, indexNum, vertNum, _elementOptions);
+					// get elements for current vertex
+					GetElementsFromFbxControlPoint(fbx_controlPoints_p, _in_fbx_mesh_p, polygonVertexIndex, polygonVertex, _in_elementsToExtract, vertex);
 
-					// add vert to list
-					_verts.push_back(vert);
+					// add vertex to list
+					_out_vertices.push_back(vertex);
 				}
 			}
 
 			// verify vertices were extracted from mesh
-			if (_verts.size() > 0)
-				result = SUCCESS;
+			if (_out_vertices.size() > 0)
+				out_result = SUCCESS;
 		}
 
-		return result;
+		return out_result;
 	}
 
-	int CompactifyVerts(std::vector<SIMPLE_VERTEX>& _verts_raw, std::vector<SIMPLE_VERTEX>& _verts_unique, std::vector<uint32_t> _indices)
+	int CompactifyVertices(std::vector<SIMPLE_VERTEX>& _in_vertices, std::vector<SIMPLE_VERTEX>& _out_vertices, std::vector<uint32_t> _out_indices)
 	{
-		int result = FAIL;
+		int out_result = FAIL;
 
 		// for all raw vertices
-		for (int i = 0; i < _verts_raw.size(); i++)
+		for (int i = 0; i < _in_vertices.size(); i++)
 		{
-			// get vertex number i
-			SIMPLE_VERTEX vert = _verts_raw[i];
+			// get current vertex
+			SIMPLE_VERTEX vertex = _in_vertices[i];
 
 			// index to add to index list
 			uint32_t index = 0;
 
-			bool isUnique = true;
+			bool vertexIsUnique = true;
 
-			// compare current vert to all unique vertices
-			for (int v = 0; v < _verts_unique.size(); v++)
+			// for all unique vertices
+			for (int v = 0; v < _out_vertices.size(); v++)
 			{
-				// if vert matches a unique vert, mark as not unique and store index of matching vert
-				if (vert == _verts_unique[v])
+				// if current vertex matches a unique vertex
+				if (vertex == _out_vertices[v])
 				{
-					isUnique = false;
+					// mark current vertex as not unique
+					vertexIsUnique = false;
+
+					// store index of unique vertex that the current vertex is equivalent to
 					index = v;
+
 					break;
 				}
 			}
 
-			// if vert is unique, store new index and add vert to unique vert list
-			if (isUnique)
+
+			if (vertexIsUnique)
 			{
-				index = (uint32_t)_verts_unique.size();
-				_verts_unique.push_back(vert);
+				// new index is the number of existing unique vertices
+				index = (uint32_t)_out_vertices.size();
+
+				// add current vertex to unique vertex list
+				_out_vertices.push_back(vertex);
 			}
 
-			// store index
-			_indices.push_back(index);
+			// add index to index list
+			_out_indices.push_back(index);
 		}
 
-		// verify verts and inds were generated
-		if (_verts_unique.size() > 0 && _indices.size() > 0)
-			result = SUCCESS;
+		// verify vertices and indices were generated
+		if (_out_vertices.size() > 0 && _out_indices.size() > 0)
+			out_result = SUCCESS;
 
-		return result;
+		return out_result;
 	}
+
+
+	// material helpers
+
+
+	// animation helpers
+
+
 #pragma endregion
 
 #pragma region Utility Functions
-	int CreateAndImport(const char* _fbx_filepath, FbxManager*& _fbx_manager_p, FbxScene*& _fbx_scene_p)
+	// FBX functions
+
+	int CreateFbxManagerAndImportFbxScene(const char* _in_fbx_filepath, FbxManager*& _out_fbx_manager_p, FbxScene*& _out_fbx_scene_p)
 	{
-		// sdk manager handles memory management
-		_fbx_manager_p = FbxManager::Create();
+		// return INVALID_ARG if scene is not nullptr
+		if (_out_fbx_scene_p != nullptr)
+			return INVALID_ARG;
+
+		// sdk manager to handle memory management
+		_out_fbx_manager_p = FbxManager::Create();
 
 		// return FAIL if manager was not created
-		if (_fbx_manager_p == nullptr)
+		if (_out_fbx_manager_p == nullptr)
 			return FAIL;
 
 		// create IO settings object
-		FbxIOSettings* ios = FbxIOSettings::Create(_fbx_manager_p, "");
-		_fbx_manager_p->SetIOSettings(ios);
+		FbxIOSettings* fbx_iosettings_p = FbxIOSettings::Create(_out_fbx_manager_p, "");
+		_out_fbx_manager_p->SetIOSettings(fbx_iosettings_p);
 
 		// create importer using sdk manager
-		FbxImporter* importer = FbxImporter::Create(_fbx_manager_p, "");
+		FbxImporter* fbx_importer_p = FbxImporter::Create(_out_fbx_manager_p, "");
 
 		// initialize importer, or display error info and return FAIL if initialization failed
-		if (!importer->Initialize(_fbx_filepath, -1, _fbx_manager_p->GetIOSettings()))
+		if (!fbx_importer_p->Initialize(_in_fbx_filepath, -1, _out_fbx_manager_p->GetIOSettings()))
 		{
 			printf("Call to FbxImporter::Initialize() failed.\n");
-			printf("Error returned: %s\n\n", importer->GetStatus().GetErrorString());
+			printf("Error returned: %s\n\n", fbx_importer_p->GetStatus().GetErrorString());
 			return FAIL;
 		}
 
 		// create new scene to populate with imported file
-		_fbx_scene_p = FbxScene::Create(_fbx_manager_p, "imported_scene");
+		_out_fbx_scene_p = FbxScene::Create(_out_fbx_manager_p, "imported_scene");
 
 		// import contents of file into scene
-		importer->Import(_fbx_scene_p);
+		fbx_importer_p->Import(_out_fbx_scene_p);
 
-		importer->Destroy();
+		// importer is no longer needed
+		fbx_importer_p->Destroy();
 
-		// verify scene was imported
-		if (_fbx_scene_p == nullptr)
+		// return FAIL if scene was not imported
+		if (_out_fbx_scene_p == nullptr)
 			return FAIL;
 
 		return SUCCESS;
 	}
 
-	SIMPLE_MATRIX FbxAMatrixToSimpleMatrix(FbxAMatrix _m)
+
+	// conversion functions
+
+	SIMPLE_MATRIX ConvertFbxAMatrixToSimpleMatrix(FbxAMatrix _in_fbx_matrix)
 	{
 		return
 		{
-			(float)_m.Get(0, 0),
-			(float)_m.Get(0, 1),
-			(float)_m.Get(0, 2),
-			(float)_m.Get(0, 3),
+			(float)_in_fbx_matrix.Get(0, 0),
+			(float)_in_fbx_matrix.Get(0, 1),
+			(float)_in_fbx_matrix.Get(0, 2),
+			(float)_in_fbx_matrix.Get(0, 3),
 
-			(float)_m.Get(1, 0),
-			(float)_m.Get(1, 1),
-			(float)_m.Get(1, 2),
-			(float)_m.Get(1, 3),
+			(float)_in_fbx_matrix.Get(1, 0),
+			(float)_in_fbx_matrix.Get(1, 1),
+			(float)_in_fbx_matrix.Get(1, 2),
+			(float)_in_fbx_matrix.Get(1, 3),
 
-			(float)_m.Get(2, 0),
-			(float)_m.Get(2, 1),
-			(float)_m.Get(2, 2),
-			(float)_m.Get(2, 3),
+			(float)_in_fbx_matrix.Get(2, 0),
+			(float)_in_fbx_matrix.Get(2, 1),
+			(float)_in_fbx_matrix.Get(2, 2),
+			(float)_in_fbx_matrix.Get(2, 3),
 
-			(float)_m.Get(3, 0),
-			(float)_m.Get(3, 1),
-			(float)_m.Get(3, 2),
-			(float)_m.Get(3, 3)
+			(float)_in_fbx_matrix.Get(3, 0),
+			(float)_in_fbx_matrix.Get(3, 1),
+			(float)_in_fbx_matrix.Get(3, 2),
+			(float)_in_fbx_matrix.Get(3, 3)
 		};
 	}
 
-	int ExtractFbxMesh(const FbxScene* _fbx_scene_p, SIMPLE_MESH& _mesh, const char* _meshName, int32_t _elementOptions)
-	{
-		int result = FAIL;
 
-		FbxScene* fbx_scene_p = (FbxScene*)_fbx_scene_p;
+	// data extraction functions
+
+	int GetMeshFromFbxScene(const FbxScene* _in_fbx_scene_p, const char* _in_meshName, int32_t _in_elementsToExtract, SIMPLE_MESH& _out_mesh)
+	{
+		int out_result = FAIL;
+
+		FbxScene* fbx_scene_p = (FbxScene*)_in_fbx_scene_p;
 		FbxMesh* fbx_mesh_p = nullptr;
 
 		// uncompactified vertex data
-		std::vector<SIMPLE_VERTEX> verts_raw;
+		std::vector<SIMPLE_VERTEX> vertices_raw;
 
 		// find mesh with specified name, or use first mesh if none is specified
-		result = GetFbxMeshFromScene(fbx_mesh_p, fbx_scene_p, _meshName);
-		if (FAILED(result))
-			return result;
+		out_result = GetFbxMeshFromFbxScene(fbx_scene_p, _in_meshName, fbx_mesh_p);
+		if (FAILED(out_result))
+			return out_result;
 
 		// extract raw vertices from mesh
-		result = ExtractVertsFromFbxMesh(verts_raw, fbx_mesh_p, _elementOptions);
-		if (FAILED(result))
-			return result;
+		out_result = GetVerticesFromFbxMesh(fbx_mesh_p, _in_elementsToExtract, vertices_raw);
+		if (FAILED(out_result))
+			return out_result;
 
 		// compactify data
-		result = CompactifyVerts(verts_raw, _mesh.vertices, _mesh.indices);
-		if (FAILED(result))
-			return result;
-		
+		out_result = CompactifyVertices(vertices_raw, _out_mesh.vertices, _out_mesh.indices);
+		if (FAILED(out_result))
+			return out_result;
+
 		// store vertex and index count
-		_mesh.vertex_count = (uint32_t)_mesh.vertices.size();
-		_mesh.index_count = (uint32_t)_mesh.indices.size();
+		_out_mesh.vertex_count = (uint32_t)_out_mesh.vertices.size();
+		_out_mesh.index_count = (uint32_t)_out_mesh.indices.size();
 
-		return result;
+		return out_result;
 	}
-	int ExtractFbxMaterial(const FbxScene* _fbx_scene_p, SIMPLE_MATERIAL_LIST& _material_list, uint32_t _matNum, int32_t _elementOptions)
+	int GetMaterialsFromFbxScene(const FbxScene* _in_fbx_scene_p, uint32_t _in_materialNum, int32_t _in_elementsToExtract, SIMPLE_MATERIAL_LIST& _out_material_list)
 	{
-		int result = FAIL;
+		int out_result = FAIL;
 
+		FbxScene* fbx_scene_p = (FbxScene*)_in_fbx_scene_p;
+		FbxSurfaceMaterial* fbx_material_p = nullptr;
+
+		// list of material data containers
 		std::vector<SIMPLE_MATERIAL> materials;
-		std::vector<filepath_t> filepaths;
 
-		FbxScene* fbx_scene = (FbxScene*)_fbx_scene_p;
-		FbxSurfaceMaterial* fbx_material = nullptr;
+		// list of texture filepaths
+		std::vector<filepath_t> filepaths;
 
 
 		// -- extract material from scene --
 
 		// if material number is specified and scene has a material with that index
-		if (_matNum > 0 && fbx_scene->GetGeometryCount() > (int)_matNum)
-			fbx_material = fbx_scene->GetMaterial(_matNum);
+		if (_in_materialNum > 0 && fbx_scene_p->GetGeometryCount() > (int)_in_materialNum)
+			fbx_material_p = fbx_scene_p->GetMaterial(_in_materialNum);
 		// if material number is unspecified or scene does not have a material with that index
 		else
-			fbx_material = fbx_scene->GetMaterial(0);
+			fbx_material_p = fbx_scene_p->GetMaterial(0);
 
-		SIMPLE_MATERIAL output_material;
+		// material to copy data into from FBX material
+		SIMPLE_MATERIAL material;
 
 		// skip non-standard materials
-		if (fbx_material->Is<FbxSurfaceLambert>() == false)
-			return result;
+		if (fbx_material_p->Is<FbxSurfaceLambert>() == false)
+			return out_result;
 
-		FbxSurfaceLambert* fbx_lambert = (FbxSurfaceLambert*)fbx_material;
+		FbxSurfaceLambert* fbx_lambert_p = (FbxSurfaceLambert*)fbx_material_p;
+		FbxFileTexture* fbx_fileTexture_p = nullptr;
+		const char* textureFilepath = "";
 
-		if (_elementOptions & MATERIAL_ELEMENT::DIFFUSE)
+		if (_in_elementsToExtract & MATERIAL_ELEMENT::DIFFUSE)
 		{
-			FbxDouble3 diffuseColor = fbx_lambert->Diffuse.Get();
-			FbxDouble diffuseFactor = fbx_lambert->DiffuseFactor.Get();
+			FbxDouble3 diffuseColor = fbx_lambert_p->Diffuse.Get();
+			FbxDouble diffuseFactor = fbx_lambert_p->DiffuseFactor.Get();
 
-			output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].value[0] = (float)diffuseColor[0];
-			output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].value[1] = (float)diffuseColor[1];
-			output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].value[2] = (float)diffuseColor[2];
+			material[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].value[0] = (float)diffuseColor[0];
+			material[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].value[1] = (float)diffuseColor[1];
+			material[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].value[2] = (float)diffuseColor[2];
 
-			output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].factor = (float)diffuseFactor;
+			material[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].factor = (float)diffuseFactor;
 
-			FbxFileTexture* fileTexture = fbx_lambert->Diffuse.GetSrcObject<FbxFileTexture>();
-			if (fileTexture != nullptr)
+			fbx_fileTexture_p = fbx_lambert_p->Diffuse.GetSrcObject<FbxFileTexture>();
+
+			if (fbx_fileTexture_p != nullptr)
 			{
-				const char* filename = fileTexture->GetRelativeFileName();
+				textureFilepath = fbx_fileTexture_p->GetRelativeFileName();
 				filepath_t filepath;
-				strcpy_s(filepath.data(), filepath.max_size(), filename);
-				output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].input = filepaths.size();
+				strcpy_s(filepath.data(), filepath.max_size(), textureFilepath);
+
+				material[SIMPLE_MATERIAL::COMPONENT_TYPE::DIFFUSE].input = filepaths.size();
 				filepaths.push_back(filepath);
 			}
 		}
 
-		if (_elementOptions & MATERIAL_ELEMENT::EMISSIVE)
+		if (_in_elementsToExtract & MATERIAL_ELEMENT::EMISSIVE)
 		{
-			FbxDouble3 emissiveColor = fbx_lambert->Emissive.Get();
-			FbxDouble emissiveFactor = fbx_lambert->EmissiveFactor.Get();
+			FbxDouble3 emissiveColor = fbx_lambert_p->Emissive.Get();
+			FbxDouble emissiveFactor = fbx_lambert_p->EmissiveFactor.Get();
 
-			output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].value[0] = (float)emissiveColor[0];
-			output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].value[1] = (float)emissiveColor[1];
-			output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].value[2] = (float)emissiveColor[2];
+			material[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].value[0] = (float)emissiveColor[0];
+			material[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].value[1] = (float)emissiveColor[1];
+			material[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].value[2] = (float)emissiveColor[2];
 
-			output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].factor = (float)emissiveFactor;
+			material[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].factor = (float)emissiveFactor;
 
-			FbxFileTexture* fileTexture = fbx_lambert->Emissive.GetSrcObject<FbxFileTexture>();
-			if (fileTexture != nullptr)
+			fbx_fileTexture_p = fbx_lambert_p->Emissive.GetSrcObject<FbxFileTexture>();
+
+			if (fbx_fileTexture_p != nullptr)
 			{
-				const char* filename = fileTexture->GetRelativeFileName();
+				textureFilepath = fbx_fileTexture_p->GetRelativeFileName();
 				filepath_t filepath;
-				strcpy_s(filepath.data(), filepath.max_size(), filename);
-				output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].input = filepaths.size();
+				strcpy_s(filepath.data(), filepath.max_size(), textureFilepath);
+
+				material[SIMPLE_MATERIAL::COMPONENT_TYPE::EMISSIVE].input = filepaths.size();
 				filepaths.push_back(filepath);
 			}
 		}
 
-		if (_elementOptions & MATERIAL_ELEMENT::SPECULAR)
+		if (_in_elementsToExtract & MATERIAL_ELEMENT::SPECULAR)
 		{
-			if (fbx_material->Is<FbxSurfacePhong>())
+			if (fbx_material_p->Is<FbxSurfacePhong>())
 			{
-				FbxSurfacePhong* phong = (FbxSurfacePhong*)fbx_material;
+				FbxSurfacePhong* fbx_phong_p = (FbxSurfacePhong*)fbx_material_p;
 
-				FbxDouble3 specularColor = phong->Specular.Get();
-				FbxDouble specularFactor = phong->SpecularFactor.Get();
+				FbxDouble3 specularColor = fbx_phong_p->Specular.Get();
+				FbxDouble specularFactor = fbx_phong_p->SpecularFactor.Get();
 
-				output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].value[0] = (float)specularColor[0];
-				output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].value[1] = (float)specularColor[1];
-				output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].value[2] = (float)specularColor[2];
+				material[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].value[0] = (float)specularColor[0];
+				material[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].value[1] = (float)specularColor[1];
+				material[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].value[2] = (float)specularColor[2];
 
-				output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].factor = (float)specularFactor;
+				material[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].factor = (float)specularFactor;
 
-				FbxFileTexture* fileTexture = phong->Specular.GetSrcObject<FbxFileTexture>();
-				if (fileTexture != nullptr)
+				fbx_fileTexture_p = fbx_phong_p->Specular.GetSrcObject<FbxFileTexture>();
+
+				if (fbx_fileTexture_p != nullptr)
 				{
-					const char* filename = fileTexture->GetRelativeFileName();
+					textureFilepath = fbx_fileTexture_p->GetRelativeFileName();
 					filepath_t filepath;
-					strcpy_s(filepath.data(), filepath.max_size(), filename);
-					output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].input = filepaths.size();
+					strcpy_s(filepath.data(), filepath.max_size(), textureFilepath);
+
+					material[SIMPLE_MATERIAL::COMPONENT_TYPE::SPECULAR].input = filepaths.size();
 					filepaths.push_back(filepath);
 				}
 			}
 		}
 
-		if (_elementOptions & MATERIAL_ELEMENT::NORMALMAP)
+		if (_in_elementsToExtract & MATERIAL_ELEMENT::NORMALMAP)
 		{
-			FbxDouble3 normalColor = fbx_lambert->NormalMap.Get();
+			FbxDouble3 normalColor = fbx_lambert_p->NormalMap.Get();
 
-			output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].value[0] = (float)normalColor[0];
-			output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].value[1] = (float)normalColor[1];
-			output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].value[2] = (float)normalColor[2];
+			material[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].value[0] = (float)normalColor[0];
+			material[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].value[1] = (float)normalColor[1];
+			material[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].value[2] = (float)normalColor[2];
 
-			output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].factor = 1.0f;
+			material[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].factor = 1.0f;
 
-			FbxFileTexture* fileTexture = fbx_lambert->NormalMap.GetSrcObject<FbxFileTexture>();
+			FbxFileTexture* fileTexture = fbx_lambert_p->NormalMap.GetSrcObject<FbxFileTexture>();
 			if (fileTexture != nullptr)
 			{
-				const char* filename = fileTexture->GetRelativeFileName();
+				textureFilepath = fileTexture->GetRelativeFileName();
 				filepath_t filepath;
-				strcpy_s(filepath.data(), filepath.max_size(), filename);
-				output_material[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].input = filepaths.size();
+				strcpy_s(filepath.data(), filepath.max_size(), textureFilepath);
+
+				material[SIMPLE_MATERIAL::COMPONENT_TYPE::NORMALMAP].input = filepaths.size();
 				filepaths.push_back(filepath);
 			}
 		}
 
-		materials.push_back(output_material);
+		materials.push_back(material);
 
 		// -- /extract material from scene --
 
 
-		return result;
+		return out_result;
 	}
-	int ExtractFbxAnimation(const FbxScene* _fbx_scene_p, SIMPLE_ANIM_CLIP& _anim_clip, uint32_t _elementOptions)
+	int GetAnimationFromFbxScene(const FbxScene* _in_fbx_scene_p, uint32_t _in_elementsToExtract, SIMPLE_ANIM_CLIP& _out_animClip)
 	{
 		int result = FAIL;
 
-		FbxScene* fbx_scene_p = (FbxScene*)_fbx_scene_p;
+		FbxScene* fbx_scene_p = (FbxScene*)_in_fbx_scene_p;
 		FbxMesh* fbx_mesh_p = nullptr;
+		FbxPose* fbx_bindPose_p = nullptr;
 
 
 		// get pose count from scene
 		uint32_t poseCount = fbx_scene_p->GetPoseCount();
-		FbxPose* fbx_bindPose_p = nullptr;
-
 
 		// -- extract bind pose from scene --
 
 		for (uint32_t i = 0; i < poseCount; i++)
 		{
-			FbxPose* pose = fbx_scene_p->GetPose(i);
-			if (pose->IsBindPose())
+			FbxPose* fbx_pose_p = fbx_scene_p->GetPose(i);
+			if (fbx_pose_p->IsBindPose())
 			{
-				fbx_bindPose_p = pose;
+				fbx_bindPose_p = fbx_pose_p;
 				break;
 			}
 		}
@@ -502,27 +534,27 @@ namespace FBXLibrary
 		// -- get skeleton root from bind pose --
 
 		uint32_t nodeCount = 0;
-		FbxNode* rootNode = nullptr;
-		FbxSkeleton* rootSkeleton = nullptr;
+		FbxNode* fbx_rootNode_p = nullptr;
+		FbxSkeleton* fbx_rootSkeleton_p = nullptr;
 
 		if (fbx_bindPose_p == nullptr)
 			return result;
 		else
 		{
 			nodeCount = fbx_bindPose_p->GetCount();
-			FbxNode* node = nullptr;
-			FbxSkeleton* skeleton = nullptr;
+			FbxNode* fbx_node_p = nullptr;
+			FbxSkeleton* fbx_skeleton_p = nullptr;
 
 			for (uint32_t i = 0; i < nodeCount; i++)
 			{
-				node = fbx_bindPose_p->GetNode(i);
-				if (node != nullptr)
+				fbx_node_p = fbx_bindPose_p->GetNode(i);
+				if (fbx_node_p != nullptr)
 				{
-					skeleton = node->GetSkeleton();
-					if (skeleton != nullptr && skeleton->IsSkeletonRoot())
+					fbx_skeleton_p = fbx_node_p->GetSkeleton();
+					if (fbx_skeleton_p != nullptr && fbx_skeleton_p->IsSkeletonRoot())
 					{
-						rootNode = node;
-						rootSkeleton = skeleton;
+						fbx_rootNode_p = fbx_node_p;
+						fbx_rootSkeleton_p = fbx_skeleton_p;
 						break;
 					}
 				}
@@ -536,7 +568,7 @@ namespace FBXLibrary
 
 		std::vector<FBX_JOINT> joints_fbx;
 
-		FBX_JOINT rootJoint = { rootNode, -1 };
+		FBX_JOINT rootJoint = { fbx_rootNode_p, -1 };
 		joints_fbx.push_back(rootJoint);
 
 		for (uint32_t i = 0; i < joints_fbx.size(); i++)
@@ -572,7 +604,7 @@ namespace FBXLibrary
 		{
 			FbxAMatrix transform = joints_fbx[i].fbx_node_p->EvaluateGlobalTransform();
 
-			SIMPLE_JOINT joint = { FbxAMatrixToSimpleMatrix(transform), joints_fbx[i].parent_index };
+			SIMPLE_JOINT joint = { ConvertFbxAMatrixToSimpleMatrix(transform), joints_fbx[i].parent_index };
 
 			joints_out.push_back(joint);
 		}
@@ -582,202 +614,105 @@ namespace FBXLibrary
 
 		// -- get animation data from scene --
 
-		FbxAnimStack* animStack = fbx_scene_p->GetCurrentAnimationStack();
-		SIMPLE_ANIM_CLIP animClip;
+		FbxAnimStack* fbx_animStack_p = fbx_scene_p->GetCurrentAnimationStack();
 
-		if (animStack == nullptr)
+		if (fbx_animStack_p == nullptr)
 			return result;
 		else
 		{
 			FbxTime::EMode mode = FbxTime::EMode::eFrames30;
 
 			// get animation duration and frame count
-			FbxTime animDuration = animStack->GetLocalTimeSpan().GetDuration();
+			FbxTime animDuration = fbx_animStack_p->GetLocalTimeSpan().GetDuration();
 			int64_t frameCount = animDuration.GetFrameCount(mode);
 
 			// store duration in seconds
-			animClip.duration = animDuration.GetSecondDouble();
+			_out_animClip.duration = animDuration.GetSecondDouble();
 
 			for (int64_t i = 1; i < frameCount; i++) // starts at 1 to skip bind post at frame 0
 			{
-				SIMPLE_ANIM_FRAME keyframe;
+				SIMPLE_ANIM_FRAME frame;
 
 				// get keytime for current frame
-				FbxTime keytime;
-				keytime.SetFrame(i, mode);
+				FbxTime frameTime;
+				frameTime.SetFrame(i, mode);
 
 				// store keytime in seconds
-				keyframe.time = keytime.GetSecondDouble();
+				frame.time = frameTime.GetSecondDouble();
 
 				// get node transforms for current frame
 				for (uint32_t n = 0; n < joints_fbx.size(); n++)
-					keyframe.transforms.push_back({ FbxAMatrixToSimpleMatrix(joints_fbx[n].fbx_node_p->EvaluateGlobalTransform(keytime)) });
+					frame.transforms.push_back({ ConvertFbxAMatrixToSimpleMatrix(joints_fbx[n].fbx_node_p->EvaluateGlobalTransform(frameTime)) });
 
-				animClip.frames.push_back(keyframe);
+				_out_animClip.frames.push_back(frame);
 			}
 		}
 
 		// -- /get animation data from scene --
-
-
-		// -- write to file --
-
-		
-
-		// -- /write to file --
-
-
-		joints_fbx.clear();
-		joints_out.clear();
-
 
 		return result;
 	}
 #pragma endregion
 
 #pragma region Interface Functions
-	int GetScenePolyCount(const char* _fbx_filepath)
+	int GetMeshFromFbxFile(const char* _in_fbx_filepath, const char* _in_meshName, int32_t _in_elementsToExtract, SIMPLE_MESH& _out_mesh)
 	{
-		int result = FAIL;
+		int out_result = FAIL;
 
-		FbxScene* scene_p = nullptr;
-		FbxManager* manager_p = nullptr;
+		FbxScene* fbx_scene_p = nullptr;
+		FbxManager* fbx_manager_p = nullptr;
 
-		// create FbxManager and import scene from file
-		result = CreateAndImport(_fbx_filepath, manager_p, scene_p);
-		if (FAILED(result))
-			return result;
+		// create manager and import scene from file
+		out_result = CreateFbxManagerAndImportFbxScene(_in_fbx_filepath, fbx_manager_p, fbx_scene_p);
+		if (FAILED(out_result))
+			return out_result;
 
-		// get geometry count from scene
-		int geoCount = scene_p->GetGeometryCount();
+		// extract data from scene into storage mesh
+		out_result = GetMeshFromFbxScene(fbx_scene_p, _out_mesh, _in_meshName, _in_elementsToExtract);
 
-		// set initial count
-		result = 0;
+		// manager is no longer needed
+		fbx_manager_p->Destroy();
 
-		// iterate through scene geometries
-		for (int i = 0; i < geoCount; i++)
-		{
-			FbxGeometry* geo = scene_p->GetGeometry(i);
-
-			// skip non-mesh geometries
-			if (geo->GetAttributeType() != FbxNodeAttribute::eMesh)
-				continue;
-
-			// add mesh's polygon count to result
-			FbxMesh* mesh = (FbxMesh*)geo;
-			result += mesh->GetPolygonCount();
-		}
-
-		// set result to error if no polygons were counted
-		if (result < 1)
-			result = FAIL;
-
-		manager_p->Destroy();
-
-		return result;
+		return out_result;
 	}
-	int ExtractMesh(const char* _fbx_filepath, SIMPLE_MESH& _mesh, const char* _meshName, int32_t _meshElements)
+	int GetMaterialsFromFbxScene(const char* _in_fbx_filepath, uint32_t _in_materialNum, int32_t _in_elementsToExtract, SIMPLE_MATERIAL_LIST& _out_materialList)
 	{
-		int result = FAIL;
+		int out_result = FAIL;
 
-		FbxScene* scene_p = nullptr;
-		FbxManager* manager_p = nullptr;
+		FbxScene* fbx_scene_p = nullptr;
+		FbxManager* fbx_manager_p = nullptr;
 
-		// create FbxManager and import scene from file
-		result = CreateAndImport(_fbx_filepath, manager_p, scene_p);
-		if (FAILED(result))
-			return result;
+		// create manager and import scene from file
+		out_result = CreateFbxManagerAndImportFbxScene(_in_fbx_filepath, fbx_manager_p, fbx_scene_p);
+		if (FAILED(out_result))
+			return out_result;
 
-		// extract mesh from scene
-		result = ExtractFbxMesh(scene_p, _mesh, _meshName, _meshElements);
+		// extract data from scene into material list
+		out_result = GetMaterialsFromFbxScene(fbx_scene_p, _out_materialList, _in_materialNum, _in_elementsToExtract);
 
-		manager_p->Destroy();
+		fbx_manager_p->Destroy();
 
-		return result;
+		return out_result;
 	}
-
-	int GetSceneMaterialCount(const char* _fbx_filepath)
+	int GetAnimationFromFbxScene(const char* _in_fbx_filepath, uint32_t _in_elementsToExtract, SIMPLE_ANIM_CLIP& _out_animClip)
 	{
-		int result = FAIL;
+		int out_result = FAIL;
 
-		FbxScene* scene_p = nullptr;
-		FbxManager* manager_p = nullptr;
+		FbxScene* fbx_scene_p = nullptr;
+		FbxManager* fbx_manager_p = nullptr;
 
-		// create FbxManager and import scene from file
-		result = CreateAndImport(_fbx_filepath, manager_p, scene_p);
-		if (FAILED(result))
-			return result;
-
-		// set result default
-		result = FAIL;
-
-		// get material count from scene
-		result = scene_p->GetMaterialCount();
-
-		manager_p->Destroy();
-
-		return result;
-	}
-	int ExtractMaterial(const char* _fbx_filepath, SIMPLE_MATERIAL_LIST& _material_list, uint32_t _matNum, int32_t _matElements)
-	{
-		int result = FAIL;
-
-		FbxScene* scene_p = nullptr;
-		FbxManager* manager_p = nullptr;
-
-		// create FbxManager and import scene from file
-		result = CreateAndImport(_fbx_filepath, manager_p, scene_p);
-		if (FAILED(result))
-			return result;
-
-		// extract material from scene
-		result = ExtractFbxMaterial(scene_p, _material_list, _matNum, _matElements);
-
-		manager_p->Destroy();
-
-		return result;
-	}
-
-	int GetScenePoseCount(const char* _fbx_filepath)
-	{
-		int result = FAIL;
-
-		FbxScene* scene_p = nullptr;
-		FbxManager* manager_p = nullptr;
-
-		// create FbxManager and import scene from file
-		result = CreateAndImport(_fbx_filepath, manager_p, scene_p);
-		if (FAILED(result))
-			return result;
-
-		// set result default
-		result = FAIL;
-
-		// get pose count from scene
-		result = scene_p->GetPoseCount();
-
-		manager_p->Destroy();
-
-		return result;
-	}
-	int ExtractAnimation(const char* _fbx_filepath, SIMPLE_ANIM_CLIP& _anim_clip, uint32_t _animElements)
-	{
-		int result = FAIL;
-
-		FbxScene* scene_p = nullptr;
-		FbxManager* manager_p = nullptr;
-
-		// create FbxManager and import scene from file
-		result = CreateAndImport(_fbx_filepath, manager_p, scene_p);
-		if (FAILED(result))
-			return result;
+		// create manager and import scene from file
+		out_result = CreateFbxManagerAndImportFbxScene(_in_fbx_filepath, fbx_manager_p, fbx_scene_p);
+		if (FAILED(out_result))
+			return out_result;
 
 		// extract animation from scene
-		result = ExtractFbxAnimation(scene_p, _anim_clip, _animElements);
+		out_result = GetAnimationFromFbxScene(fbx_scene_p, _in_elementsToExtract, _out_animClip);
 
-		manager_p->Destroy();
+		// manager is no longer needed
+		fbx_manager_p->Destroy();
 
-		return result;
+		return out_result;
 	}
 #pragma endregion
 

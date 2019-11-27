@@ -17,14 +17,14 @@ namespace FBXLibrary
 	};
 
 
-	int CreateAndImport(const char* _fbx_filepath, FbxManager*& _fbx_manager_p, FbxScene*& _scene);
+	int CreateFbxManagerAndImportFbxScene(const char* _in_fbx_filepath, FbxManager*& _out_fbx_manager_p, FbxScene*& _scene);
 
-	SIMPLE_MATRIX FbxAMatrixToSimpleMatrix(FbxAMatrix _m);
+	SIMPLE_MATRIX ConvertFbxAMatrixToSimpleMatrix(FbxAMatrix _m);
 
-	int ExtractFbxMesh(const FbxScene* _fbx_scene_p, SIMPLE_MESH& _mesh, const char* _meshName, int32_t _elementOptions);
+	int GetMeshFromFbxScene(const FbxScene* _fbx_scene_p, SIMPLE_MESH& _mesh, const char* _meshName, int32_t _elementOptions);
 
-	int ExtractFbxMaterial(const FbxScene* _fbx_scene_p, SIMPLE_MATERIAL_LIST& _material_list, uint32_t _matNum, int32_t _elementOptions);
+	int GetMaterialsFromFbxScene(const FbxScene* _fbx_scene_p, SIMPLE_MATERIAL_LIST& _material_list, uint32_t _matNum, int32_t _elementOptions);
 
-	int ExtractFbxAnimation(const FbxScene* _fbx_scene_p, SIMPLE_ANIM_CLIP& _anim_clip, uint32_t _elementOptions);
+	int GetAnimationFromFbxScene(const FbxScene* _fbx_scene_p, SIMPLE_ANIM_CLIP& _anim_clip, uint32_t _elementOptions);
 
 }

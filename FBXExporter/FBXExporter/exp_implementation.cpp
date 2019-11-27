@@ -172,7 +172,7 @@ namespace FBXExporter
 		ReplaceExtension(outFile, _inFile, ".mesh");
 
 		// extract mesh data from file
-		result = FBXLibrary::ExtractMesh(_inFile, mesh, nullptr, _elementOptions);
+		result = FBXLibrary::GetMeshFromFbxFile(_inFile, mesh, nullptr, _elementOptions);
 		if (FAILED(result))
 			return result;
 

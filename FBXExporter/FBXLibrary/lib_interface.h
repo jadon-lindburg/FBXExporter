@@ -16,6 +16,7 @@ namespace FBXLibrary
 {
 #pragma region Defines
 	// macros used to specify the result of functions and operations
+#define INVALID_ARG -2
 #define FAIL -1
 #define SUCCESS 0
 #define EXTRACT 1
@@ -92,7 +93,7 @@ namespace FBXLibrary
 		float pos[3] = { 0.0f, 0.0f, 0.0f };
 		float norm[3] = { 0.0f, 0.0f, 0.0f };
 		float color[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		float tex[2] = { 0.0f, 0.0f };
+		float texCoord[2] = { 0.0f, 0.0f };
 
 		bool operator==(const SIMPLE_VERTEX rhs)
 		{
@@ -101,7 +102,7 @@ namespace FBXLibrary
 				pos[0] == rhs.pos[0] && pos[1] == rhs.pos[1] && pos[2] == rhs.pos[2]
 				&& norm[0] == rhs.norm[0] && norm[1] == rhs.norm[1] && norm[2] == rhs.norm[2]
 				&& color[0] == rhs.color[0] && color[1] == rhs.color[1] && color[2] == rhs.color[2] && color[3] == rhs.color[3]
-				&& tex[0] == rhs.tex[0] && tex[1] == rhs.tex[1]
+				&& texCoord[0] == rhs.texCoord[0] && texCoord[1] == rhs.texCoord[1]
 			};
 		}
 	};
@@ -167,27 +168,21 @@ namespace FBXLibrary
 
 
 #pragma region Functions
-	// Returns count of polygons in scene, or error code if failed
-	FBXLIB_INTERFACE int GetScenePolyCount(const char* _fbx_filepath);
-
+	// !Extracts mesh data from a .fbx file and stores it for modification or export
+	/*
 	// Extracts mesh from scene and converts it for loading
 	// Returns result code
 	// NOTES:
-	//   Use _meshName to search for mesh by name, otherwise first mesh is used by default
-	//   Use _meshElements to specify which supported elements to store (others default to 0)
-	FBXLIB_INTERFACE int ExtractMesh(const char* _fbx_filepath, SIMPLE_MESH& _mesh, const char* _meshName = nullptr, int32_t _elementOptions = 0);
-
-	// Returns count of materials in scene, or error code if failed
-	FBXLIB_INTERFACE int GetSceneMaterialCount(const char* _fbx_filepath);
+	//   Use _in_meshName to search for mesh by name, otherwise first mesh is used by default
+	//   Use _in_elementsToExtract to specify which supported elements to store (others default to 0)
+	*/
+	FBXLIB_INTERFACE int GetMeshFromFbxFile(const char* _in_fbx_filepath, const char* _in_meshName, int32_t _in_elementsToExtract, SIMPLE_MESH& _out_mesh);
 
 	// Extracts material from scene and converts it for loading
 	// Returns result code
 	// NOTES:
 	//   Use _matElements to specify which supported elements to store (others default to 0)
 	FBXLIB_INTERFACE int ExtractMaterial(const char* _fbx_filepath, SIMPLE_MATERIAL_LIST& _material_list, uint32_t _matNum = 0, int32_t _elementOptions = 0);
-
-	// Returns count of poses in scene, or error code if failed
-	FBXLIB_INTERFACE int GetScenePoseCount(const char* _fbx_filepath);
 
 	// Extracts animation from scene and converts it for loading
 	// Returns result code
