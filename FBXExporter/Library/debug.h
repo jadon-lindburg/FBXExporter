@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _FBXEXPORTER_LIBRARY_DEBUG_H_
+#define _FBXEXPORTER_LIBRARY_DEBUG_H_
 
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
@@ -9,3 +10,5 @@
 #else
 #define NEW new
 #endif
+
+#endif // _FBXEXPORTER_LIBRARY_DEBUG_H_

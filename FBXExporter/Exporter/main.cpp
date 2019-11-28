@@ -1,7 +1,8 @@
+#include "interface.h"
+
 #include <iostream>
 
-#include "exp_interface.h"
-
+#include "../Library/debug.h"
 
 namespace
 {
@@ -85,11 +86,11 @@ namespace
 		{
 			// print mesh option prompt
 			std::cout << "Mesh elements supported : "
-				<< FBXLibrary::MESH_ELEMENT::POSITION << " - Positions; "
-				<< FBXLibrary::MESH_ELEMENT::NORMAL << " - Normals; "
-				<< FBXLibrary::MESH_ELEMENT::COLOR << " - Colors; "
-				<< FBXLibrary::MESH_ELEMENT::TEXCOORD << " - Texture coordinates; "
-				<< FBXLibrary::MESH_ELEMENT::ALL << " - All"
+				<< fbx_exporter::library::MeshElement::POSITION << " - Positions; "
+				<< fbx_exporter::library::MeshElement::NORMAL << " - Normals; "
+				<< fbx_exporter::library::MeshElement::COLOR << " - Colors; "
+				<< fbx_exporter::library::MeshElement::TEXCOORD << " - Texture coordinates; "
+				<< fbx_exporter::library::MeshElement::ALL << " - All"
 				<< std::endl
 				<< "Enter sum of selections : ";
 
@@ -102,11 +103,11 @@ namespace
 		{
 			// print material options prompt
 			std::cout << "Material elements supported : "
-				<< FBXLibrary::MATERIAL_ELEMENT::DIFFUSE << " - Diffuse; "
-				<< FBXLibrary::MATERIAL_ELEMENT::EMISSIVE << " - Emissive; "
-				<< FBXLibrary::MATERIAL_ELEMENT::SPECULAR << " - Specular; "
-				<< FBXLibrary::MATERIAL_ELEMENT::NORMALMAP << " - Normal map; "
-				<< FBXLibrary::MATERIAL_ELEMENT::ALL << " - All"
+				<< fbx_exporter::library::MaterialElement::DIFFUSE << " - Diffuse; "
+				<< fbx_exporter::library::MaterialElement::EMISSIVE << " - Emissive; "
+				<< fbx_exporter::library::MaterialElement::SPECULAR << " - Specular; "
+				<< fbx_exporter::library::MaterialElement::NORMALMAP << " - Normal map; "
+				<< fbx_exporter::library::MaterialElement::ALL << " - All"
 				<< std::endl
 				<< "Enter sum of selections : ";
 
@@ -129,16 +130,16 @@ namespace
 	void ExtractAndExportData()
 	{
 		// set default result
-		int result = FAIL;
+		fbx_exporter::library::Result result = fbx_exporter::library::Result::FAIL;
 
 		// extract animation data
-		result = FBXExporter::ExtractAnimationFromFbxFile(filepath, 0, exports[EXPORT_OPTION::INDEX_ANIMATION]);
+		result = fbx_exporter::ExtractAnimationFromFbxFile(filepath, 0, exports[EXPORT_OPTION::INDEX_ANIMATION]);
 
 		// extract material data
-		result = FBXExporter::ExtractMaterialsFromFbxFile(filepath, elementOptions[EXPORT_OPTION::INDEX_MATERIAL], exports[EXPORT_OPTION::INDEX_MATERIAL]);
+		result = fbx_exporter::ExtractMaterialsFromFbxFile(filepath, elementOptions[EXPORT_OPTION::INDEX_MATERIAL], exports[EXPORT_OPTION::INDEX_MATERIAL]);
 
 		// extract mesh data
-		result = FBXExporter::ExtractMeshFromFbxFile(filepath, nullptr, elementOptions[EXPORT_OPTION::INDEX_MESH], exports[EXPORT_OPTION::INDEX_MESH]);
+		result = fbx_exporter::ExtractMeshFromFbxFile(filepath, nullptr, elementOptions[EXPORT_OPTION::INDEX_MESH], exports[EXPORT_OPTION::INDEX_MESH]);
 	}
 #pragma endregion
 }
@@ -149,7 +150,7 @@ int main(int argc, char* argv[])
 	// set automatic memory leak reporting on program exit
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 
-	// verify filename was specified
+	// read and act on input if filename was specified
 	if (argc > 1)
 	{
 		// store fbx filepath
@@ -157,14 +158,14 @@ int main(int argc, char* argv[])
 
 		// read export and element selections
 		if (ReadOptions())
-			// if valid selection was made, extract (and export to file if selected) data from .fbx file
+			// if valid selection was made, extract and export data from .fbx file
 			ExtractAndExportData();
 	}
-	// if no filename was specified, print error
 	else
+	{
 		std::cout << "No file to import" << std::endl;
+	}
 
-	// print exit prompt
 	std::cout << "Press enter to exit" << std::endl;
 	std::cin.get();
 }

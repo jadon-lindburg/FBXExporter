@@ -1,21 +1,22 @@
+#include "interface.h"
+#include "utility.h"
+
 #include <cstring>
 #include <vector>
 
-#include "..\FBXLibrary\lib_debug.h"
-#include "exp_interface.h"
-#include "exp_utility.h"
+#include "../Library/debug.h"
 
 
-namespace FBXExporter
+namespace fbx_exporter
 {
 #pragma region Variables
-	FBXLibrary::SIMPLE_MESH mesh;
-	FBXLibrary::SIMPLE_MATERIAL_LIST materials;
-	FBXLibrary::SIMPLE_ANIM_CLIP animation;
+	fbx_exporter::library::Mesh mesh;
+	fbx_exporter::library::MaterialList materials;
+	fbx_exporter::library::AnimationClip animation;
 #pragma endregion
 
 
-#pragma region Utility Functions
+#pragma region Utility Function Definitions
 	void ReplaceExtension(char* _outFile, const char* _inFile, const char* _extension)
 	{
 		int pathLen = (int)(strrchr(_inFile, '.') - _inFile);
@@ -26,7 +27,8 @@ namespace FBXExporter
 		memcpy(&_outFile[pathLen], _extension, extensionLen);
 	}
 
-	int ExportMesh(const char* _outFile, FBXLibrary::SIMPLE_MESH _mesh)
+	fbx_exporter::library::Result ExportMesh(
+		const char* _outFile, fbx_exporter::library::Mesh _mesh)
 	{
 		/*
 		// open or create output file for writing
@@ -64,9 +66,10 @@ namespace FBXExporter
 		}
 		*/
 
-		return SUCCESS;
+		return fbx_exporter::library::Result::SUCCESS;
 	}
-	int ExportMaterial(const char* _outFile, FBXLibrary::SIMPLE_MATERIAL_LIST _materials)
+	fbx_exporter::library::Result ExportMaterial(
+		const char* _outFile, fbx_exporter::library::MaterialList _materials)
 	{
 		/*
 		// open or create output file for writing
@@ -108,9 +111,10 @@ namespace FBXExporter
 		}
 		*/
 
-		return SUCCESS;
+		return fbx_exporter::library::Result::SUCCESS;
 	}
-	int ExportAnimation(const char* _outFile, FBXLibrary::SIMPLE_ANIM_CLIP animation)
+	fbx_exporter::library::Result ExportAnimation(
+		const char* _outFile, fbx_exporter::library::AnimationClip animation)
 	{
 		/*
 		// open or create output file for writing
@@ -158,22 +162,22 @@ namespace FBXExporter
 		}
 		*/
 
-		return SUCCESS;
+		return fbx_exporter::library::Result::SUCCESS;
 	}
 #pragma endregion
 
 #pragma region Interface Functions
 	int ExtractMeshFromFbxFile(const char* _inFile, const char* _meshName, uint32_t _elementOptions, bool _export)
 	{
-		int result = FAIL;
+		int result = fbx_exporter::library::Result::FAIL;
 
 		// get output filename
 		char outFile[260];
 		ReplaceExtension(outFile, _inFile, ".mesh");
 
 		// extract mesh data from file
-		result = FBXLibrary::GetMeshFromFbxFile(_inFile, mesh, nullptr, _elementOptions);
-		if (FAILED(result))
+		result = fbx_exporter::library::GetMeshFromFbxFile(_inFile, mesh, nullptr, _elementOptions);
+		if (!fbx_exporter::library::Succeeded(result))
 			return result;
 
 		// export data to file if flag is set
@@ -184,15 +188,15 @@ namespace FBXExporter
 	}
 	int ExtractMaterialsFromFbxFile(const char* _inFile, uint32_t _elementOptions, bool _export)
 	{
-		int result = FAIL;
+		int result = fbx_exporter::library::Result::FAIL;
 
 		// get output filename
 		char outFile[260];
 		ReplaceExtension(outFile, _inFile, ".mat");
 
 		// extract material data from file
-		result = FBXLibrary::ExtractMaterial(_inFile, materials, 0, _elementOptions);
-		if (FAILED(result))
+		result = fbx_exporter::library::ExtractMaterial(_inFile, materials, 0, _elementOptions);
+		if (!fbx_exporter::library::!ucceeded(result))
 			return result;
 
 		// export data to file if flag is set
@@ -203,15 +207,15 @@ namespace FBXExporter
 	}
 	int ExtractAnimationFromFbxFile(const char* _inFile, uint32_t _elementOptions, bool _export)
 	{
-		int result = FAIL;
+		int result = fbx_exporter::library::Result::FAIL;
 
 		// get output filename
 		char outFile[260];
 		ReplaceExtension(outFile, _inFile, ".anim");
 
 		// extract animation data from file
-		result = FBXLibrary::ExtractAnimation(_inFile, animation, _elementOptions);
-		if (FAILED(result))
+		result = fbx_exporter::library::ExtractAnimation(_inFile, animation, _elementOptions);
+		if (!fbx_exporter::library::Succeeded(result))
 			return result;
 
 		// export data to file if flag is set
