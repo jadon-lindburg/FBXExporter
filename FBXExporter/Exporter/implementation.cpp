@@ -20,7 +20,7 @@ namespace fbx_exporter
 		, const char*					_in_extension
 		, char*							_out_filepath
 	) {
-		int pathLen = (int)(strrchr(_in_extension, '.') - _in_filepath);
+		int pathLen = (int)(strrchr(_in_filepath, '.') - _in_filepath);
 		int extensionLen = (int)strlen(_in_extension);
 
 		memset(_out_filepath, 0, pathLen + extensionLen + 1);
