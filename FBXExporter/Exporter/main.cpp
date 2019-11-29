@@ -6,58 +6,41 @@
 
 namespace
 {
-#pragma region Structs
-	// data types available to exportfrom a .fbx file
-	struct EXPORT_OPTION
+	// Data types available to export from a .fbx file.
+	struct DataTypeOption
 	{
-		enum {
-			OPTION_MESH = 0x00000001
-			, OPTION_MATERIAL = 0x00000002
-			, OPTION_ANIMATION = 0x00000004
-			, OPTION_ALL = OPTION_MESH | OPTION_MATERIAL | OPTION_ANIMATION
-
-			, INDEX_MESH = 0
-			, INDEX_MATERIAL
-			, INDEX_ANIMATION
-			, INDEX_COUNT
+		enum
+		{
+			MESH = 0x00000001  // Export .mesh file.
+			, MATERIAL = 0x00000002  // Export .mat file.
+			, ANIMATION = 0x00000004  // Export .anim file.
+			, ALL = MESH | MATERIAL | ANIMATION  // Export all supported data types.
 		};
 	};
-#pragma endregion
 
-#pragma region Variables
-	// fbx file to extract data from
-	char* filepath = nullptr;
+	char*								filepath = nullptr;
+	char								buffer[50];
+	uint32_t							exportSelections = 0;
+	uint32_t							elementOptions[fbx_exporter::library::DataTypeIndex::COUNT] = {};
+	fbx_exporter::FileReadMode			dataTypesToExport[fbx_exporter::library::DataTypeIndex::COUNT] = {};
 
-	// buffer to read input into
-	char buffer[50];
-
-	// data types to export
-	int32_t exportSelections = 0;
-
-	// element option selection
-	int32_t elementOptions[EXPORT_OPTION::INDEX_COUNT] = {};
-
-	// bool array filled from export selections
-	bool exports[EXPORT_OPTION::INDEX_COUNT];
-#pragma endregion
-
-#pragma region Private Helper Functions
-	// Reads and stores options
-	// Returns true if a valid export selection was made, false otherwise
+	/* Reads and stores export options
+	  RETURNS
+		true : A valid export selection was made.
+		false : No valid export selection was made.
+	*/
 	bool ReadOptions()
 	{
-		// print filename
 		std::cout << "File to Export : ";
 		if (filepath != nullptr)
 			std::cout << filepath;
 		std::cout << std::endl << std::endl;
 
-		// print export options prompt
 		std::cout << "Export options : "
-			<< EXPORT_OPTION::OPTION_MESH << " - Mesh; "
-			<< EXPORT_OPTION::OPTION_MATERIAL << " - Materials; "
-			<< EXPORT_OPTION::OPTION_ANIMATION << " - Animation; "
-			<< EXPORT_OPTION::OPTION_ALL << " - All"
+			<< DataTypeOption::MESH << " - Mesh; "
+			<< DataTypeOption::MATERIAL << " - Materials; "
+			<< DataTypeOption::ANIMATION << " - Animation; "
+			<< DataTypeOption::ALL << " - All"
 			<< std::endl
 			<< "Enter sum of selections : ";
 
@@ -66,57 +49,76 @@ namespace
 		exportSelections = strtol(buffer, nullptr, 10);
 		std::cout << std::endl;
 
-		// convert selections into bool array
-		for (uint32_t i = 0; i < EXPORT_OPTION::INDEX_COUNT; i++)
-			exports[i] = exportSelections & (uint32_t)pow(2, i);
+		// convert selections into array
+		for (uint32_t i = 0; i < fbx_exporter::library::DataTypeIndex::COUNT; i++)
+		{
+			if (exportSelections & (uint32_t)pow(2, i))
+				dataTypesToExport[i] = fbx_exporter::FileReadMode::EXPORT;
+			else
+				dataTypesToExport[i] = fbx_exporter::FileReadMode::EXTRACT;
+		}
 
 		// if no valid selection was made, print error and return false
 		if (!(
-			exports[EXPORT_OPTION::INDEX_MESH]
-			|| exports[EXPORT_OPTION::INDEX_MATERIAL]
-			|| exports[EXPORT_OPTION::INDEX_ANIMATION]
+			(dataTypesToExport[fbx_exporter::library::DataTypeIndex::MESH]
+				== fbx_exporter::FileReadMode::EXPORT)
+			|| (dataTypesToExport[fbx_exporter::library::DataTypeIndex::MATERIAL]
+				== fbx_exporter::FileReadMode::EXPORT)
+			|| (dataTypesToExport[fbx_exporter::library::DataTypeIndex::ANIMATION]
+				== fbx_exporter::FileReadMode::EXPORT)
 			))
 		{
 			std::cout << "Invalid selection" << std::endl;
 			return false;
 		}
 
-		// read and store element selections
-		if (exports[EXPORT_OPTION::INDEX_MESH])
+		if (dataTypesToExport[fbx_exporter::library::DataTypeIndex::MESH]
+			== fbx_exporter::FileReadMode::EXPORT)
 		{
-			// print mesh option prompt
 			std::cout << "Mesh elements supported : "
-				<< fbx_exporter::library::MeshElement::POSITION << " - Positions; "
-				<< fbx_exporter::library::MeshElement::NORMAL << " - Normals; "
-				<< fbx_exporter::library::MeshElement::COLOR << " - Colors; "
-				<< fbx_exporter::library::MeshElement::TEXCOORD << " - Texture coordinates; "
-				<< fbx_exporter::library::MeshElement::ALL << " - All"
+				<< static_cast<int>(fbx_exporter::library::MeshElement::POSITION)
+				<< " - Positions; "
+				<< static_cast<int>(fbx_exporter::library::MeshElement::NORMAL)
+				<< " - Normals; "
+				<< static_cast<int>(fbx_exporter::library::MeshElement::COLOR)
+				<< " - Colors; "
+				<< static_cast<int>(fbx_exporter::library::MeshElement::TEXCOORD)
+				<< " - Texture coordinates; "
+				<< static_cast<int>(fbx_exporter::library::MeshElement::ALL)
+				<< " - All"
 				<< std::endl
 				<< "Enter sum of selections : ";
 
 			// read mesh options
 			std::cin.getline(buffer, 50);
-			elementOptions[EXPORT_OPTION::INDEX_MESH] = strtol(buffer, nullptr, 10);
+			elementOptions[fbx_exporter::library::DataTypeIndex::MESH] = strtol(buffer, nullptr, 10);
 			std::cout << std::endl;
 		}
-		if (exports[EXPORT_OPTION::INDEX_MATERIAL])
+		if (dataTypesToExport[fbx_exporter::library::DataTypeIndex::MATERIAL]
+			== fbx_exporter::FileReadMode::EXPORT)
 		{
-			// print material options prompt
 			std::cout << "Material elements supported : "
-				<< fbx_exporter::library::MaterialElement::DIFFUSE << " - Diffuse; "
-				<< fbx_exporter::library::MaterialElement::EMISSIVE << " - Emissive; "
-				<< fbx_exporter::library::MaterialElement::SPECULAR << " - Specular; "
-				<< fbx_exporter::library::MaterialElement::NORMALMAP << " - Normal map; "
-				<< fbx_exporter::library::MaterialElement::ALL << " - All"
+				<< static_cast<int>(fbx_exporter::library::MaterialElement::DIFFUSE)
+				<< " - Diffuse; "
+				<< static_cast<int>(fbx_exporter::library::MaterialElement::EMISSIVE)
+				<< " - Emissive; "
+				<< static_cast<int>(fbx_exporter::library::MaterialElement::SPECULAR)
+				<< " - Specular; "
+				<< static_cast<int>(fbx_exporter::library::MaterialElement::NORMALMAP)
+				<< " - Normal map; "
+				<< static_cast<int>(fbx_exporter::library::MaterialElement::ALL)
+				<< " - All"
 				<< std::endl
 				<< "Enter sum of selections : ";
 
 			// read material options
 			std::cin.getline(buffer, 50);
-			elementOptions[EXPORT_OPTION::INDEX_MATERIAL] = strtol(buffer, nullptr, 10);
+			elementOptions[fbx_exporter::library::DataTypeIndex::MATERIAL]
+				= strtol(buffer, nullptr, 10);
 			std::cout << std::endl;
 		}
-		if (exports[EXPORT_OPTION::INDEX_ANIMATION])
+		if (dataTypesToExport[fbx_exporter::library::DataTypeIndex::ANIMATION]
+			== fbx_exporter::FileReadMode::EXPORT)
 		{
 			std::cout << "No animation options supported"
 				<< std::endl;
@@ -125,23 +127,6 @@ namespace
 		// if valid selection was made, return true
 		return true;
 	}
-
-	// Extracts (and exports if selected) data from .fbx file
-	void ExtractAndExportData()
-	{
-		// set default result
-		fbx_exporter::library::Result result = fbx_exporter::library::Result::FAIL;
-
-		// extract animation data
-		result = fbx_exporter::ExtractAnimationFromFbxFile(filepath, 0, exports[EXPORT_OPTION::INDEX_ANIMATION]);
-
-		// extract material data
-		result = fbx_exporter::ExtractMaterialsFromFbxFile(filepath, elementOptions[EXPORT_OPTION::INDEX_MATERIAL], exports[EXPORT_OPTION::INDEX_MATERIAL]);
-
-		// extract mesh data
-		result = fbx_exporter::ExtractMeshFromFbxFile(filepath, nullptr, elementOptions[EXPORT_OPTION::INDEX_MESH], exports[EXPORT_OPTION::INDEX_MESH]);
-	}
-#pragma endregion
 }
 
 
@@ -159,7 +144,7 @@ int main(int argc, char* argv[])
 		// read export and element selections
 		if (ReadOptions())
 			// if valid selection was made, extract and export data from .fbx file
-			ExtractAndExportData();
+			fbx_exporter::GetDataFromFbxFile(filepath, elementOptions, dataTypesToExport);
 	}
 	else
 	{

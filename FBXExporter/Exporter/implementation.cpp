@@ -1,8 +1,7 @@
 #include "interface.h"
 #include "utility.h"
 
-#include <cstring>
-#include <vector>
+
 
 #include "../Library/debug.h"
 
@@ -10,26 +9,29 @@
 namespace fbx_exporter
 {
 #pragma region Variables
-	fbx_exporter::library::Mesh mesh;
-	fbx_exporter::library::MaterialList materials;
-	fbx_exporter::library::AnimationClip animation;
+	library::Mesh mesh;
+	library::MaterialList materials;
+	library::AnimationClip animation;
 #pragma endregion
 
-
 #pragma region Utility Function Definitions
-	void ReplaceExtension(char* _outFile, const char* _inFile, const char* _extension)
-	{
-		int pathLen = (int)(strrchr(_inFile, '.') - _inFile);
-		int extensionLen = (int)strlen(_extension);
+	void ReplaceExtension(
+		const char*						_in_filepath
+		, const char*					_in_extension
+		, char*							_out_filepath
+	) {
+		int pathLen = (int)(strrchr(_in_extension, '.') - _in_filepath);
+		int extensionLen = (int)strlen(_in_extension);
 
-		memset(_outFile, 0, pathLen + extensionLen + 1);
-		memcpy(&_outFile[0], _inFile, pathLen);
-		memcpy(&_outFile[pathLen], _extension, extensionLen);
+		memset(_out_filepath, 0, pathLen + extensionLen + 1);
+		memcpy(&_out_filepath[0], _in_filepath, pathLen);
+		memcpy(&_out_filepath[pathLen], _in_extension, extensionLen);
 	}
 
-	fbx_exporter::library::Result ExportMesh(
-		const char* _outFile, fbx_exporter::library::Mesh _mesh)
-	{
+	library::Result ExportMesh(
+		const char*						_in_filepath
+		, const library::Mesh			_in_mesh
+	) {
 		/*
 		// open or create output file for writing
 		std::fstream fout = std::fstream(_outputFilepath, std::ios_base::out | std::ios_base::binary);
@@ -66,11 +68,12 @@ namespace fbx_exporter
 		}
 		*/
 
-		return fbx_exporter::library::Result::SUCCESS;
+		return library::Result::SUCCESS;
 	}
-	fbx_exporter::library::Result ExportMaterial(
-		const char* _outFile, fbx_exporter::library::MaterialList _materials)
-	{
+	library::Result ExportMaterials(
+		const char*						_in_filepath
+		, library::MaterialList			_in_materials
+	) {
 		/*
 		// open or create output file for writing
 		std::fstream fout = std::fstream(_outputFilepath, std::ios_base::out | std::ios_base::binary);
@@ -111,11 +114,12 @@ namespace fbx_exporter
 		}
 		*/
 
-		return fbx_exporter::library::Result::SUCCESS;
+		return library::Result::SUCCESS;
 	}
-	fbx_exporter::library::Result ExportAnimation(
-		const char* _outFile, fbx_exporter::library::AnimationClip animation)
-	{
+	library::Result ExportAnimation(
+		const char*						_in_filepath
+		, library::AnimationClip		_in_animationClip
+	) {
 		/*
 		// open or create output file for writing
 		std::fstream fout = std::fstream(_outputFilepath, std::ios_base::out | std::ios_base::binary);
@@ -162,67 +166,89 @@ namespace fbx_exporter
 		}
 		*/
 
-		return fbx_exporter::library::Result::SUCCESS;
+		return library::Result::SUCCESS;
 	}
 #pragma endregion
 
 #pragma region Interface Functions
-	int ExtractMeshFromFbxFile(const char* _inFile, const char* _meshName, uint32_t _elementOptions, bool _export)
-	{
-		int result = fbx_exporter::library::Result::FAIL;
+	library::Result GetMeshFromFbxFile(
+		const char*						_in_fbxFilepath
+		, const uint32_t				_in_elementsToExtract
+		, const FileReadMode			_in_readMode
+	) {
+		library::Result ret_result = library::Result::FAIL;
 
-		// get output filename
-		char outFile[260];
-		ReplaceExtension(outFile, _inFile, ".mesh");
+		char exportFilepath[260];
+		ReplaceExtension(_in_fbxFilepath, ".mesh", exportFilepath);
 
-		// extract mesh data from file
-		result = fbx_exporter::library::GetMeshFromFbxFile(_inFile, mesh, nullptr, _elementOptions);
-		if (!fbx_exporter::library::Succeeded(result))
-			return result;
+		ret_result = library::GetMeshFromFbxFile(_in_fbxFilepath, "", _in_elementsToExtract, mesh);
+		if (!library::Succeeded(ret_result))
+			return ret_result;
 
-		// export data to file if flag is set
-		if (_export)
-			result = ExportMesh(outFile, mesh);
-
-		return result;
+		if (_in_readMode == FileReadMode::EXPORT)
+			ret_result = ExportMesh(exportFilepath, mesh);
+		return ret_result;
 	}
-	int ExtractMaterialsFromFbxFile(const char* _inFile, uint32_t _elementOptions, bool _export)
-	{
-		int result = fbx_exporter::library::Result::FAIL;
+	library::Result GetMaterialsFromFbxFile(
+		const char*						_in_fbxFilepath
+		, const uint32_t				_in_elementsToExtract
+		, const FileReadMode			_in_readMode
+	) {
+		library::Result ret_result = library::Result::FAIL;
 
-		// get output filename
-		char outFile[260];
-		ReplaceExtension(outFile, _inFile, ".mat");
+		char exportFilepath[260];
+		ReplaceExtension(_in_fbxFilepath, ".mat", exportFilepath);
 
-		// extract material data from file
-		result = fbx_exporter::library::ExtractMaterial(_inFile, materials, 0, _elementOptions);
-		if (!fbx_exporter::library::!ucceeded(result))
-			return result;
+		ret_result = library::GetMaterialsFromFbxFile(_in_fbxFilepath, 0, _in_elementsToExtract, materials);
+		if (!library::Succeeded(ret_result))
+			return ret_result;
 
-		// export data to file if flag is set
-		if (_export)
-			result = ExportMaterial(outFile, materials);
-
-		return result;
+		if (_in_readMode == FileReadMode::EXPORT)
+			ret_result = ExportMaterials(exportFilepath, materials);
+		return ret_result;
 	}
-	int ExtractAnimationFromFbxFile(const char* _inFile, uint32_t _elementOptions, bool _export)
-	{
-		int result = fbx_exporter::library::Result::FAIL;
+	library::Result GetAnimationFromFbxFile(
+		const char*						_in_fbxFilepath
+		, const uint32_t				_in_elementsToExtract
+		, const FileReadMode			_in_readMode
+	) {
+		library::Result ret_result = library::Result::FAIL;
 
-		// get output filename
-		char outFile[260];
-		ReplaceExtension(outFile, _inFile, ".anim");
+		char exportFilepath[260];
+		ReplaceExtension(_in_fbxFilepath, ".anim", exportFilepath);
 
-		// extract animation data from file
-		result = fbx_exporter::library::ExtractAnimation(_inFile, animation, _elementOptions);
-		if (!fbx_exporter::library::Succeeded(result))
-			return result;
+		ret_result = library::GetAnimationFromFbxFile(_in_fbxFilepath, _in_elementsToExtract, animation);
+		if (!library::Succeeded(ret_result))
+			return ret_result;
 
-		// export data to file if flag is set
-		if (_export)
-			result = ExportAnimation(outFile, animation);
+		if (_in_readMode == FileReadMode::EXPORT)
+			ret_result = ExportAnimation(exportFilepath, animation);
+		return ret_result;
+	}
+	library::Result GetDataFromFbxFile(
+		const char*						_in_fbxFilepath
+		, const uint32_t*				_in_elementsToExtract
+		, const FileReadMode*			_in_readModes
+	) {
+		library::Result ret_result = library::Result::FAIL;
 
-		return result;
+		// animation must be extracted before mesh to include animation joint weights in mesh data
+		ret_result = GetAnimationFromFbxFile(_in_fbxFilepath,
+			_in_elementsToExtract[library::DataTypeIndex::ANIMATION],
+			_in_readModes[library::DataTypeIndex::ANIMATION]);
+		if (!library::Succeeded(ret_result))
+			return ret_result;
+
+		ret_result = GetMeshFromFbxFile(_in_fbxFilepath,
+			_in_elementsToExtract[library::DataTypeIndex::MESH],
+			_in_readModes[library::DataTypeIndex::MESH]);
+		if (!library::Succeeded(ret_result))
+			return ret_result;
+
+		ret_result = GetMaterialsFromFbxFile(_in_fbxFilepath,
+			_in_elementsToExtract[library::DataTypeIndex::MATERIAL],
+			_in_readModes[library::DataTypeIndex::MATERIAL]);
+		return ret_result;
 	}
 #pragma endregion
 

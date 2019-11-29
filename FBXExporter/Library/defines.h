@@ -12,6 +12,43 @@ namespace fbx_exporter
 		using filepath_t = std::array<char, 260>;
 
 
+		// Named index values for array access.
+		struct DataTypeIndex
+		{
+			enum
+			{
+				MESH = 0
+				, MATERIAL
+				, ANIMATION
+				, COUNT
+			};
+		};
+
+		// Indicates vertex elements to store when extracting a mesh.
+		enum struct MeshElement
+		{
+			POSITION = 0x00000001  // Model-space position vector.
+			, NORMAL = 0x00000002  // Model-space normal vector.
+			, COLOR = 0x00000004  // RGBA color.
+			, TEXCOORD = 0x00000008  // UV texcure coordinate.
+			, ALL = POSITION | NORMAL | COLOR | TEXCOORD  // All supported elements.
+		};
+
+		// Indicates textures to store when extracting a material.
+		enum struct MaterialElement
+		{
+			DIFFUSE = 0x00000001  // Diffuse texture.
+			, EMISSIVE = 0x00000002  // Emissive texture.
+			, SPECULAR = 0x00000004  // Specular map.
+			, NORMALMAP = 0x00000008  // Normal map.
+			, ALL = EMISSIVE | DIFFUSE | SPECULAR | NORMALMAP  // All supported elements.
+		};
+
+		// Indicates animation elements to store when extracting an animation.
+		enum struct AnimationElement
+		{
+		};
+
 		// Indicates the result of a function or operation.
 		enum struct Result
 		{
@@ -20,40 +57,6 @@ namespace fbx_exporter
 			, SUCCESS = 0  // The operation completely successfully.
 			, EXTRACT = 1  // Data was successfully extracted from a file.
 			, EXPORT = 2  // Data was successfully exported to a file.
-		};
-
-		// Indicates vertex elements to store when extracting a mesh
-		struct MeshElement
-		{
-			enum
-			{
-				POSITION = 0x00000001  // Model-space position vector.
-				, NORMAL = 0x00000002  // Model-space normal vector.
-				, COLOR = 0x00000004  // RGBA color.
-				, TEXCOORD = 0x00000008  // UV texcure coordinate.
-				, ALL = POSITION | NORMAL | COLOR | TEXCOORD  // All supported elements.
-			};
-		};
-
-		// Indicates textures to store when extracting a material
-		struct MaterialElement
-		{
-			enum
-			{
-				DIFFUSE = 0x00000001  // Diffuse texture.
-				, EMISSIVE = 0x00000002  // Emissive texture.
-				, SPECULAR = 0x00000004  // Specular map.
-				, NORMALMAP = 0x00000008  // Normal map.
-				, ALL = EMISSIVE | DIFFUSE | SPECULAR | NORMALMAP  // All supported elements.
-			};
-		};
-
-		// Indicates animation elements to store when extracting an animation
-		struct AnimationElement
-		{
-			enum
-			{
-			};
 		};
 
 
@@ -101,10 +104,10 @@ namespace fbx_exporter
 		// Mesh data container.
 		struct Mesh
 		{
-			uint32_t				vertex_count = 0;  // Number of vertices in mesh.
-			uint32_t				index_count = 0;  // Number of indices in mesh.
-			std::vector<Vertex>		vertices;  // List of vertices in mesh.
-			std::vector<uint32_t>	indices;  // List of indices in mesh.
+			uint32_t					vertex_count = 0;  // Number of vertices in mesh.
+			uint32_t					index_count = 0;  // Number of indices in mesh.
+			std::vector<Vertex>			vertices;  // List of vertices in mesh.
+			std::vector<uint32_t>		indices;  // List of indices in mesh.
 		};
 
 		// Material data container.
@@ -150,15 +153,15 @@ namespace fbx_exporter
 		// Animation frame data container.
 		struct AnimationFrame
 		{
-			double					time;  // Trigger time for frame.
-			std::vector<Matrix>		transforms;  // List of joint transformations.
+			double						time;  // Trigger time for frame.
+			std::vector<Matrix>			transforms;  // List of joint transformations.
 		};
 
 		// Animation clip data container.
 		struct AnimationClip
 		{
-			double							duration;  // Animation length in seconds.
-			std::vector<AnimationFrame>		frames;  // List of keyframes.
+			double						duration;  // Animation length in seconds.
+			std::vector<AnimationFrame>	frames;  // List of keyframes.
 		};
 
 	}
